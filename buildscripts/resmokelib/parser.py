@@ -439,11 +439,11 @@ def _add_find_suites(subparsers):
               " positional arguments, they will be run using the suites'"
               " configurations."))
 
+
 def _add_hang_analyzer(subparsers):
     """Create and add the parser for the hang analyzer subcommand."""
 
-    parser = subparsers.add_parser(
-        "hang-analyzer", help=commands.hang_analyzer.__doc__)
+    parser = subparsers.add_parser("hang-analyzer", help=commands.hang_analyzer.__doc__)
 
     parser.add_argument(
         '-m', '--process-match', dest='process_match', choices=('contains', 'exact'),
@@ -452,21 +452,21 @@ def _add_hang_analyzer(subparsers):
         " conversions: change all process names to lowecase, strip off the file"
         " extension, like '.exe' on Windows. Default is 'contains'.")
     parser.add_argument('-p', '--process-names', dest='process_names',
-                      help='Comma separated list of process names to analyze')
+                        help='Comma separated list of process names to analyze')
     parser.add_argument('-g', '--go-process-names', dest='go_process_names',
-                      help='Comma separated list of go process names to analyze')
+                        help='Comma separated list of go process names to analyze')
     parser.add_argument(
         '-d', '--process-ids', dest='process_ids', default=None,
         help='Comma separated list of process ids (PID) to analyze, overrides -p &'
         ' -g')
     parser.add_argument('-c', '--dump-core', dest='dump_core', action="store_true", default=False,
-                      help='Dump core file for each analyzed process')
+                        help='Dump core file for each analyzed process')
     parser.add_argument('-s', '--max-core-dumps-size', dest='max_core_dumps_size', default=10000,
-                      help='Maximum total size of core dumps to keep in megabytes')
+                        help='Maximum total size of core dumps to keep in megabytes')
     parser.add_argument(
-        '-o', '--debugger-output', dest='debugger_output', action="append",
-        choices=('file', 'stdout'), default=None,
-        help="If 'stdout', then the debugger's output is written to the Python"
+        '-o', '--debugger-output', dest='debugger_output', action="append", choices=('file',
+                                                                                     'stdout'),
+        default=None, help="If 'stdout', then the debugger's output is written to the Python"
         " process's stdout. If 'file', then the debugger's output is written"
         " to a file named debugger_<process>_<pid>.log for each process it"
         " attaches to. This option can be specified multiple times on the"
