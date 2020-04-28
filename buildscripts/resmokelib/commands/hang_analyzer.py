@@ -645,15 +645,7 @@ class HangAnalyzer(interface.Subcommand):
         self.root_logger.info("Python Version: %s", sys.version)
         self.root_logger.info("OS: %s", platform.platform())
 
-
-    # Basic procedure
-    #
-    # 1. Get a list of interesting processes
-    # 2. Dump useful information or take dumps
-    def execute(self):  # pylint: disable=too-many-branches,too-many-locals,too-many-statements
-        """Execute hang analysis."""
-        self._setup_logging()
-
+    def _log_system_info(self):
         try:
             if _IS_WINDOWS or sys.platform == "cygwin":
                 distro = platform.win32_ver()
@@ -674,6 +666,15 @@ class HangAnalyzer(interface.Subcommand):
             self.root_logger.warning("Cannot determine Unix Current Login")
         except AttributeError:
             self.root_logger.warning("Cannot determine Unix Current Login, not supported on Windows")
+
+    # Basic procedure
+    #
+    # 1. Get a list of interesting processes
+    # 2. Dump useful information or take dumps
+    def execute(self):  # pylint: disable=too-many-branches,too-many-locals,too-many-statements
+        """Execute hang analysis."""
+        self._setup_logging()
+        self._log_system_info()
 
         DebugExtractor.extract_debug_symbols(self.root_logger)
 
