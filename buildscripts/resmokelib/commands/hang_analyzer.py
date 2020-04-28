@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Hang Analyzer module.
 
 A prototype hang analyzer for Evergreen integration to help investigate test timeouts
