@@ -635,44 +635,47 @@ class HangAnalyzer(interface.Subcommand):
     def __init__(self, options):
         self.options = options
 
+    def _setup_logging(self):
+        self.root_logger = logging.Logger("hang_analyzer", level=logging.DEBUG)
+
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(logging.Formatter(fmt="%(message)s"))
+        self.root_logger.addHandler(handler)
+
+        self.root_logger.info("Python Version: %s", sys.version)
+        self.root_logger.info("OS: %s", platform.platform())
+
 
     # Basic procedure
     #
     # 1. Get a list of interesting processes
     # 2. Dump useful information or take dumps
     def execute(self):  # pylint: disable=too-many-branches,too-many-locals,too-many-statements
-        """Execute Main program."""
-        root_logger = logging.Logger("hang_analyzer", level=logging.DEBUG)
-
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(logging.Formatter(fmt="%(message)s"))
-        root_logger.addHandler(handler)
-
-        root_logger.info("Python Version: %s", sys.version)
-        root_logger.info("OS: %s", platform.platform())
+        """Execute hang analysis."""
+        self._setup_logging()
 
         try:
             if _IS_WINDOWS or sys.platform == "cygwin":
                 distro = platform.win32_ver()
-                root_logger.info("Windows Distribution: %s", distro)
+                self.root_logger.info("Windows Distribution: %s", distro)
             else:
                 distro = platform.linux_distribution()
-                root_logger.info("Linux Distribution: %s", distro)
+                self.root_logger.info("Linux Distribution: %s", distro)
 
         except AttributeError:
-            root_logger.warning("Cannot determine Linux distro since Python is too old")
+            self.root_logger.warning("Cannot determine Linux distro since Python is too old")
 
         try:
             uid = os.getuid()
-            root_logger.info("Current User: %s", uid)
+            self.root_logger.info("Current User: %s", uid)
             current_login = os.getlogin()
-            root_logger.info("Current Login: %s", current_login)
+            self.root_logger.info("Current Login: %s", current_login)
         except OSError:
-            root_logger.warning("Cannot determine Unix Current Login")
+            self.root_logger.warning("Cannot determine Unix Current Login")
         except AttributeError:
-            root_logger.warning("Cannot determine Unix Current Login, not supported on Windows")
+            self.root_logger.warning("Cannot determine Unix Current Login, not supported on Windows")
 
-        DebugExtractor.extract_debug_symbols(root_logger)
+        DebugExtractor.extract_debug_symbols(self.root_logger)
 
         interesting_processes = ["mongo", "mongod", "mongos", "_test", "dbtest", "python", "java"]
         go_processes = []
@@ -683,10 +686,10 @@ class HangAnalyzer(interface.Subcommand):
 
         if self.options.process_ids is not None:
             # process_ids is an int list of PIDs
-            process_ids = [int(pid) for pid in options.process_ids.split(',')]
+            process_ids = [int(pid) for pid in self.options.process_ids.split(',')]
 
         if self.options.process_names is not None:
-            interesting_processes = options.process_names.split(',')
+            interesting_processes = self.options.process_names.split(',')
 
         if self.options.go_process_names is not None:
             go_processes = self.options.go_process_names.split(',')
@@ -695,10 +698,10 @@ class HangAnalyzer(interface.Subcommand):
         [ps, dbg, jstack] = get_hang_analyzers()
 
         if ps is None or (dbg is None and jstack is None):
-            root_logger.warning("hang_analyzer.py: Unsupported platform: %s", sys.platform)
+            self.root_logger.warning("hang_analyzer.py: Unsupported platform: %s", sys.platform)
             exit(1)
 
-        all_processes = ps.dump_processes(root_logger)
+        all_processes = ps.dump_processes(self.root_logger)
 
         # Canonicalize the process names to lowercase to handle cases where the name of the Python
         # process is /System/Library/.../Python on OS X and -p python is specified to hang_analyzer.py.
@@ -714,14 +717,14 @@ class HangAnalyzer(interface.Subcommand):
             running_pids = {pid for (pid, pname) in all_processes}
             missing_pids = set(process_ids) - running_pids
             if missing_pids:
-                root_logger.warning("The following requested process ids are not running %s",
+                self.root_logger.warning("The following requested process ids are not running %s",
                                     list(missing_pids))
         else:
             processes = [(pid, pname) for (pid, pname) in all_processes
                          if pname_match(self.options.process_match, pname, interesting_processes)
                          and pid != os.getpid()]
 
-        root_logger.info("Found %d interesting processes %s", len(processes), processes)
+        self.root_logger.info("Found %d interesting processes %s", len(processes), processes)
 
         max_dump_size_bytes = int(self.options.max_core_dumps_size) * 1024 * 1024
 
@@ -731,13 +734,13 @@ class HangAnalyzer(interface.Subcommand):
             # On Windows, we set up an event object to wait on a signal. For Cygwin, we register
             # a signal handler to wait for the signal since it supports POSIX signals.
             if _IS_WINDOWS:
-                root_logger.info("Calling SetEvent to signal python process %s with PID %d",
+                self.root_logger.info("Calling SetEvent to signal python process %s with PID %d",
                                  process_name, pid)
-                signal_event_object(root_logger, pid)
+                signal_event_object(self.root_logger, pid)
             else:
-                root_logger.info("Sending signal SIGUSR1 to python process %s with PID %d",
+                self.root_logger.info("Sending signal SIGUSR1 to python process %s with PID %d",
                                  process_name, pid)
-                signal_process(root_logger, pid, signal.SIGUSR1)
+                signal_process(self.root_logger, pid, signal.SIGUSR1)
 
         trapped_exceptions = []
 
@@ -747,19 +750,19 @@ class HangAnalyzer(interface.Subcommand):
             process_logger = get_process_logger(self.options.debugger_output, pid, process_name)
             try:
                 dbg.dump_info(
-                    root_logger, process_logger, pid, process_name, self.options.dump_core
+                    self.root_logger, process_logger, pid, process_name, self.options.dump_core
                     and check_dump_quota(max_dump_size_bytes, dbg.get_dump_ext()))
             except Exception as err:  # pylint: disable=broad-except
-                root_logger.info("Error encountered when invoking debugger %s", err)
+                self.root_logger.info("Error encountered when invoking debugger %s", err)
                 trapped_exceptions.append(traceback.format_exc())
 
             # Dump java processes using jstack.
         for (pid, process_name) in [(p, pn) for (p, pn) in processes if pn.startswith("java")]:
             process_logger = get_process_logger(self.options.debugger_output, pid, process_name)
             try:
-                jstack.dump_info(root_logger, pid)
+                jstack.dump_info(self.root_logger, pid)
             except Exception as err:  # pylint: disable=broad-except
-                root_logger.info("Error encountered when invoking debugger %s", err)
+                self.root_logger.info("Error encountered when invoking debugger %s", err)
                 trapped_exceptions.append(traceback.format_exc())
 
             # Signal go processes to ensure they print out stack traces, and die on POSIX OSes.
@@ -767,12 +770,12 @@ class HangAnalyzer(interface.Subcommand):
             # TerminateProcess.
             # Note: The stacktrace output may be captured elsewhere (i.e. resmoke).
         for (pid, process_name) in [(p, pn) for (p, pn) in processes if pn in go_processes]:
-            root_logger.info("Sending signal SIGABRT to go process %s with PID %d", process_name, pid)
-            signal_process(root_logger, pid, signal.SIGABRT)
+            self.root_logger.info("Sending signal SIGABRT to go process %s with PID %d", process_name, pid)
+            signal_process(self.root_logger, pid, signal.SIGABRT)
 
-        root_logger.info("Done analyzing all processes for hangs")
+        self.root_logger.info("Done analyzing all processes for hangs")
 
         for exception in trapped_exceptions:
-            root_logger.info(exception)
+            self.root_logger.info(exception)
         if trapped_exceptions:
             sys.exit(1)
