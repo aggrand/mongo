@@ -579,26 +579,22 @@ def parse_command_line(sys_args, **kwargs):
     """Parse the command line arguments passed to resmoke.py and return the subcommand object to execute."""
     parser, parsed_args = _parse(sys_args)
 
-    def create_subcommand(parser, parsed_args, **kwargs):
-        """Creates a subcommand object based on args passed into resmoke.py."""
+    subcommand = parsed_args.command
+    subcommand_obj = None
+    if subcommand in ('find-suites', 'list-suites', 'run'):
+        configure_resmoke.validate_and_update_config(parser, parsed_args)
+        if _config.EVERGREEN_TASK_ID is not None:
+            subcommand_obj = commands.run.TestRunnerEvg(subcommand, **kwargs)
+        else:
+            subcommand_obj = commands.run.TestRunner(subcommand, **kwargs)
+    elif subcommand == 'hang-analyzer':
+        subcommand_obj = commands.hang_analyzer.HangAnalyzer(parsed_args)
 
-        subcommand = parsed_args.command
-        subcommand_obj = None
-        if subcommand in ('find-suites', 'list-suites', 'run'):
-            configure_resmoke.validate_and_update_config(parser, parsed_args)
-            if _config.EVERGREEN_TASK_ID is not None:
-                subcommand_obj = commands.run.TestRunnerEvg(subcommand, **kwargs)
-            else:
-                subcommand_obj = commands.run.TestRunner(subcommand, **kwargs)
+    if subcommand_obj is None:
+        raise RuntimeError(
+            f"Resmoke configuration has invalid subcommand: {subcommand}. Try '--help'")
 
-        if subcommand_obj is None:
-            raise RuntimeError(
-                f"Resmoke configuration has invalid subcommand: {subcommand}. Try '--help'")
-
-        return subcommand_obj
-
-    return create_subcommand(parser, parsed_args, **kwargs)
-
+    return subcommand_obj
 
 def set_run_options(argstr=''):
     """Populate the config module variables for the 'run' subcommand with the default options."""
