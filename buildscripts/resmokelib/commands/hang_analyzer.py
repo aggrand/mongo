@@ -635,6 +635,24 @@ class HangAnalyzer(interface.Subcommand):
     def __init__(self, options):
         self.options = options
 
+        self.interesting_processes = ["mongo", "mongod", "mongos", "_test", "dbtest", "python", "java"]
+        self.go_processes = []
+        self.process_ids = []
+
+        if self.options.debugger_output is None:
+            self.options.debugger_output = ['stdout']
+
+        if self.options.process_ids is not None:
+            # self.process_ids is an int list of PIDs
+            self.process_ids = [int(pid) for pid in self.options.process_ids.split(',')]
+
+        if self.options.process_names is not None:
+            self.interesting_processes = self.options.process_names.split(',')
+
+        if self.options.go_process_names is not None:
+            self.go_processes = self.options.go_process_names.split(',')
+            self.interesting_processes += self.go_processes
+
     def _setup_logging(self):
         self.root_logger = logging.Logger("hang_analyzer", level=logging.DEBUG)
 
@@ -678,24 +696,7 @@ class HangAnalyzer(interface.Subcommand):
 
         DebugExtractor.extract_debug_symbols(self.root_logger)
 
-        interesting_processes = ["mongo", "mongod", "mongos", "_test", "dbtest", "python", "java"]
-        go_processes = []
-        process_ids = []
-
-        if self.options.debugger_output is None:
-            self.options.debugger_output = ['stdout']
-
-        if self.options.process_ids is not None:
-            # process_ids is an int list of PIDs
-            process_ids = [int(pid) for pid in self.options.process_ids.split(',')]
-
-        if self.options.process_names is not None:
-            interesting_processes = self.options.process_names.split(',')
-
-        if self.options.go_process_names is not None:
-            go_processes = self.options.go_process_names.split(',')
-            interesting_processes += go_processes
-
+        
         [ps, dbg, jstack] = get_hang_analyzers()
 
         if ps is None or (dbg is None and jstack is None):
@@ -711,18 +712,18 @@ class HangAnalyzer(interface.Subcommand):
         # Find all running interesting processes:
         #   If a list of process_ids is supplied, match on that.
         #   Otherwise, do a substring match on interesting_processes.
-        if process_ids:
+        if self.process_ids:
             processes = [(pid, pname) for (pid, pname) in all_processes
-                         if pid in process_ids and pid != os.getpid()]
+                         if pid in self.process_ids and pid != os.getpid()]
 
             running_pids = {pid for (pid, pname) in all_processes}
-            missing_pids = set(process_ids) - running_pids
+            missing_pids = set(self.process_ids) - running_pids
             if missing_pids:
                 self.root_logger.warning("The following requested process ids are not running %s",
                                     list(missing_pids))
         else:
             processes = [(pid, pname) for (pid, pname) in all_processes
-                         if pname_match(self.options.process_match, pname, interesting_processes)
+                         if pname_match(self.options.process_match, pname, self.interesting_processes)
                          and pid != os.getpid()]
 
         self.root_logger.info("Found %d interesting processes %s", len(processes), processes)
@@ -770,7 +771,7 @@ class HangAnalyzer(interface.Subcommand):
             # On Windows, this will simply kill the process since python emulates SIGABRT as
             # TerminateProcess.
             # Note: The stacktrace output may be captured elsewhere (i.e. resmoke).
-        for (pid, process_name) in [(p, pn) for (p, pn) in processes if pn in go_processes]:
+        for (pid, process_name) in [(p, pn) for (p, pn) in processes if pn in self.go_processes]:
             self.root_logger.info("Sending signal SIGABRT to go process %s with PID %d", process_name, pid)
             signal_process(self.root_logger, pid, signal.SIGABRT)
 
