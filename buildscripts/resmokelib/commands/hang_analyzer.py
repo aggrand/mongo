@@ -10,7 +10,6 @@ A prototype hang analyzer for Evergreen integration to help investigate test tim
 
 Supports Linux, MacOS X, Solaris, and Windows.
 """
-
 import io
 import csv
 import glob
@@ -27,9 +26,8 @@ import traceback
 import time
 from distutils import spawn  # pylint: disable=no-name-in-module
 from optparse import OptionParser
-_IS_WINDOWS = (sys.platform == "win32")
-
 from buildscripts.resmokelib.commands import interface
+_IS_WINDOWS = (sys.platform == "win32")
 
 if _IS_WINDOWS:
     import win32event
@@ -631,7 +629,14 @@ def pname_match(match_type, pname, interesting_processes):
 
 
 class HangAnalyzer(interface.Subcommand):
+    """Main class for the hang analyzer subcommand."""
+
     def __init__(self, options):
+        """
+        Configure processe lists based on options.
+
+        :param options: Options as parsed by parser.py
+        """
         self.options = options
         self.root_logger = None
         self.interesting_processes = [

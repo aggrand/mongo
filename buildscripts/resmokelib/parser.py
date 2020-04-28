@@ -584,7 +584,7 @@ def parse(sys_args):
 
 
 def create_subcommand(parser, parsed_args, **kwargs):
-    """Creates a subcommand object based on args passed into resmoke.py."""
+    """Create a subcommand object based on args passed into resmoke.py."""
 
     subcommand = parsed_args.command
     subcommand_obj = None
