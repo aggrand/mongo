@@ -594,6 +594,8 @@ def create_subcommand(parser, parsed_args, **kwargs):
             subcommand_obj = commands.run.TestRunnerEvg(subcommand, **kwargs)
         else:
             subcommand_obj = commands.run.TestRunner(subcommand, **kwargs)
+    elif subcommand == 'hang-analyzer':
+        subcommand_obj = commands.hang_analyzer.HangAnalyzer(parsed_args)
 
     if subcommand_obj is None:
         raise RuntimeError(

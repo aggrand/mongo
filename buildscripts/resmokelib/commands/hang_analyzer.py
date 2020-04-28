@@ -29,6 +29,8 @@ from distutils import spawn  # pylint: disable=no-name-in-module
 from optparse import OptionParser
 _IS_WINDOWS = (sys.platform == "win32")
 
+from buildscripts.resmokelib.commands import interface
+
 if _IS_WINDOWS:
     import win32event
     import win32api
@@ -36,7 +38,7 @@ if _IS_WINDOWS:
 # Get relative imports to work when the package is not installed on the PYTHONPATH.
 if __name__ == "__main__" and __package__ is None:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from buildscripts.resmokelib import core
+    import core
 
 
 def call(args, logger):
@@ -628,179 +630,149 @@ def pname_match(match_type, pname, interesting_processes):
     return False
 
 
-# Basic procedure
-#
-# 1. Get a list of interesting processes
-# 2. Dump useful information or take dumps
-def main():  # pylint: disable=too-many-branches,too-many-locals,too-many-statements
-    """Execute Main program."""
-    root_logger = logging.Logger("hang_analyzer", level=logging.DEBUG)
+class HangAnalyzer(interface.Subcommand):
 
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(logging.Formatter(fmt="%(message)s"))
-    root_logger.addHandler(handler)
+    def __init__(self, options):
+        self.options = options
 
-    root_logger.info("Python Version: %s", sys.version)
-    root_logger.info("OS: %s", platform.platform())
 
-    try:
-        if _IS_WINDOWS or sys.platform == "cygwin":
-            distro = platform.win32_ver()
-            root_logger.info("Windows Distribution: %s", distro)
-        else:
-            distro = platform.linux_distribution()
-            root_logger.info("Linux Distribution: %s", distro)
+    # Basic procedure
+    #
+    # 1. Get a list of interesting processes
+    # 2. Dump useful information or take dumps
+    def execute(self):  # pylint: disable=too-many-branches,too-many-locals,too-many-statements
+        """Execute Main program."""
+        root_logger = logging.Logger("hang_analyzer", level=logging.DEBUG)
 
-    except AttributeError:
-        root_logger.warning("Cannot determine Linux distro since Python is too old")
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(logging.Formatter(fmt="%(message)s"))
+        root_logger.addHandler(handler)
 
-    try:
-        uid = os.getuid()
-        root_logger.info("Current User: %s", uid)
-        current_login = os.getlogin()
-        root_logger.info("Current Login: %s", current_login)
-    except OSError:
-        root_logger.warning("Cannot determine Unix Current Login")
-    except AttributeError:
-        root_logger.warning("Cannot determine Unix Current Login, not supported on Windows")
+        root_logger.info("Python Version: %s", sys.version)
+        root_logger.info("OS: %s", platform.platform())
 
-    DebugExtractor.extract_debug_symbols(root_logger)
-
-    interesting_processes = ["mongo", "mongod", "mongos", "_test", "dbtest", "python", "java"]
-    go_processes = []
-    process_ids = []
-
-    parser = OptionParser(description=__doc__)
-    parser.add_option(
-        '-m', '--process-match', dest='process_match', choices=['contains', 'exact'],
-        default='contains', help="Type of match for process names (-p & -g), specify 'contains', or"
-        " 'exact'. Note that the process name match performs the following"
-        " conversions: change all process names to lowecase, strip off the file"
-        " extension, like '.exe' on Windows. Default is 'contains'.")
-    parser.add_option('-p', '--process-names', dest='process_names',
-                      help='Comma separated list of process names to analyze')
-    parser.add_option('-g', '--go-process-names', dest='go_process_names',
-                      help='Comma separated list of go process names to analyze')
-    parser.add_option(
-        '-d', '--process-ids', dest='process_ids', default=None,
-        help='Comma separated list of process ids (PID) to analyze, overrides -p &'
-        ' -g')
-    parser.add_option('-c', '--dump-core', dest='dump_core', action="store_true", default=False,
-                      help='Dump core file for each analyzed process')
-    parser.add_option('-s', '--max-core-dumps-size', dest='max_core_dumps_size', default=10000,
-                      help='Maximum total size of core dumps to keep in megabytes')
-    parser.add_option(
-        '-o', '--debugger-output', dest='debugger_output', action="append",
-        choices=['file', 'stdout'], default=None,
-        help="If 'stdout', then the debugger's output is written to the Python"
-        " process's stdout. If 'file', then the debugger's output is written"
-        " to a file named debugger_<process>_<pid>.log for each process it"
-        " attaches to. This option can be specified multiple times on the"
-        " command line to have the debugger's output written to multiple"
-        " locations. By default, the debugger's output is written only to the"
-        " Python process's stdout.")
-
-    (options, _) = parser.parse_args()
-
-    if options.debugger_output is None:
-        options.debugger_output = ['stdout']
-
-    if options.process_ids is not None:
-        # process_ids is an int list of PIDs
-        process_ids = [int(pid) for pid in options.process_ids.split(',')]
-
-    if options.process_names is not None:
-        interesting_processes = options.process_names.split(',')
-
-    if options.go_process_names is not None:
-        go_processes = options.go_process_names.split(',')
-        interesting_processes += go_processes
-
-    [ps, dbg, jstack] = get_hang_analyzers()
-
-    if ps is None or (dbg is None and jstack is None):
-        root_logger.warning("hang_analyzer.py: Unsupported platform: %s", sys.platform)
-        exit(1)
-
-    all_processes = ps.dump_processes(root_logger)
-
-    # Canonicalize the process names to lowercase to handle cases where the name of the Python
-    # process is /System/Library/.../Python on OS X and -p python is specified to hang_analyzer.py.
-    all_processes = [(pid, process_name.lower()) for (pid, process_name) in all_processes]
-
-    # Find all running interesting processes:
-    #   If a list of process_ids is supplied, match on that.
-    #   Otherwise, do a substring match on interesting_processes.
-    if process_ids:
-        processes = [(pid, pname) for (pid, pname) in all_processes
-                     if pid in process_ids and pid != os.getpid()]
-
-        running_pids = {pid for (pid, pname) in all_processes}
-        missing_pids = set(process_ids) - running_pids
-        if missing_pids:
-            root_logger.warning("The following requested process ids are not running %s",
-                                list(missing_pids))
-    else:
-        processes = [(pid, pname) for (pid, pname) in all_processes
-                     if pname_match(options.process_match, pname, interesting_processes)
-                     and pid != os.getpid()]
-
-    root_logger.info("Found %d interesting processes %s", len(processes), processes)
-
-    max_dump_size_bytes = int(options.max_core_dumps_size) * 1024 * 1024
-
-    # Dump python processes by signalling them. The resmoke.py process will generate
-    # the report.json, when signalled, so we do this before attaching to other processes.
-    for (pid, process_name) in [(p, pn) for (p, pn) in processes if pn.startswith("python")]:
-        # On Windows, we set up an event object to wait on a signal. For Cygwin, we register
-        # a signal handler to wait for the signal since it supports POSIX signals.
-        if _IS_WINDOWS:
-            root_logger.info("Calling SetEvent to signal python process %s with PID %d",
-                             process_name, pid)
-            signal_event_object(root_logger, pid)
-        else:
-            root_logger.info("Sending signal SIGUSR1 to python process %s with PID %d",
-                             process_name, pid)
-            signal_process(root_logger, pid, signal.SIGUSR1)
-
-    trapped_exceptions = []
-
-    # Dump all processes, except python & java.
-    for (pid,
-         process_name) in [(p, pn) for (p, pn) in processes if not re.match("^(java|python)", pn)]:
-        process_logger = get_process_logger(options.debugger_output, pid, process_name)
         try:
-            dbg.dump_info(
-                root_logger, process_logger, pid, process_name, options.dump_core
-                and check_dump_quota(max_dump_size_bytes, dbg.get_dump_ext()))
-        except Exception as err:  # pylint: disable=broad-except
-            root_logger.info("Error encountered when invoking debugger %s", err)
-            trapped_exceptions.append(traceback.format_exc())
+            if _IS_WINDOWS or sys.platform == "cygwin":
+                distro = platform.win32_ver()
+                root_logger.info("Windows Distribution: %s", distro)
+            else:
+                distro = platform.linux_distribution()
+                root_logger.info("Linux Distribution: %s", distro)
 
-        # Dump java processes using jstack.
-    for (pid, process_name) in [(p, pn) for (p, pn) in processes if pn.startswith("java")]:
-        process_logger = get_process_logger(options.debugger_output, pid, process_name)
+        except AttributeError:
+            root_logger.warning("Cannot determine Linux distro since Python is too old")
+
         try:
-            jstack.dump_info(root_logger, pid)
-        except Exception as err:  # pylint: disable=broad-except
-            root_logger.info("Error encountered when invoking debugger %s", err)
-            trapped_exceptions.append(traceback.format_exc())
+            uid = os.getuid()
+            root_logger.info("Current User: %s", uid)
+            current_login = os.getlogin()
+            root_logger.info("Current Login: %s", current_login)
+        except OSError:
+            root_logger.warning("Cannot determine Unix Current Login")
+        except AttributeError:
+            root_logger.warning("Cannot determine Unix Current Login, not supported on Windows")
 
-        # Signal go processes to ensure they print out stack traces, and die on POSIX OSes.
-        # On Windows, this will simply kill the process since python emulates SIGABRT as
-        # TerminateProcess.
-        # Note: The stacktrace output may be captured elsewhere (i.e. resmoke).
-    for (pid, process_name) in [(p, pn) for (p, pn) in processes if pn in go_processes]:
-        root_logger.info("Sending signal SIGABRT to go process %s with PID %d", process_name, pid)
-        signal_process(root_logger, pid, signal.SIGABRT)
+        DebugExtractor.extract_debug_symbols(root_logger)
 
-    root_logger.info("Done analyzing all processes for hangs")
+        interesting_processes = ["mongo", "mongod", "mongos", "_test", "dbtest", "python", "java"]
+        go_processes = []
+        process_ids = []
 
-    for exception in trapped_exceptions:
-        root_logger.info(exception)
-    if trapped_exceptions:
-        sys.exit(1)
+        if self.options.debugger_output is None:
+            self.options.debugger_output = ['stdout']
 
+        if self.options.process_ids is not None:
+            # process_ids is an int list of PIDs
+            process_ids = [int(pid) for pid in options.process_ids.split(',')]
 
-if __name__ == "__main__":
-    main()
+        if self.options.process_names is not None:
+            interesting_processes = options.process_names.split(',')
+
+        if self.options.go_process_names is not None:
+            go_processes = self.options.go_process_names.split(',')
+            interesting_processes += go_processes
+
+        [ps, dbg, jstack] = get_hang_analyzers()
+
+        if ps is None or (dbg is None and jstack is None):
+            root_logger.warning("hang_analyzer.py: Unsupported platform: %s", sys.platform)
+            exit(1)
+
+        all_processes = ps.dump_processes(root_logger)
+
+        # Canonicalize the process names to lowercase to handle cases where the name of the Python
+        # process is /System/Library/.../Python on OS X and -p python is specified to hang_analyzer.py.
+        all_processes = [(pid, process_name.lower()) for (pid, process_name) in all_processes]
+
+        # Find all running interesting processes:
+        #   If a list of process_ids is supplied, match on that.
+        #   Otherwise, do a substring match on interesting_processes.
+        if process_ids:
+            processes = [(pid, pname) for (pid, pname) in all_processes
+                         if pid in process_ids and pid != os.getpid()]
+
+            running_pids = {pid for (pid, pname) in all_processes}
+            missing_pids = set(process_ids) - running_pids
+            if missing_pids:
+                root_logger.warning("The following requested process ids are not running %s",
+                                    list(missing_pids))
+        else:
+            processes = [(pid, pname) for (pid, pname) in all_processes
+                         if pname_match(self.options.process_match, pname, interesting_processes)
+                         and pid != os.getpid()]
+
+        root_logger.info("Found %d interesting processes %s", len(processes), processes)
+
+        max_dump_size_bytes = int(self.options.max_core_dumps_size) * 1024 * 1024
+
+        # Dump python processes by signalling them. The resmoke.py process will generate
+        # the report.json, when signalled, so we do this before attaching to other processes.
+        for (pid, process_name) in [(p, pn) for (p, pn) in processes if pn.startswith("python")]:
+            # On Windows, we set up an event object to wait on a signal. For Cygwin, we register
+            # a signal handler to wait for the signal since it supports POSIX signals.
+            if _IS_WINDOWS:
+                root_logger.info("Calling SetEvent to signal python process %s with PID %d",
+                                 process_name, pid)
+                signal_event_object(root_logger, pid)
+            else:
+                root_logger.info("Sending signal SIGUSR1 to python process %s with PID %d",
+                                 process_name, pid)
+                signal_process(root_logger, pid, signal.SIGUSR1)
+
+        trapped_exceptions = []
+
+        # Dump all processes, except python & java.
+        for (pid,
+             process_name) in [(p, pn) for (p, pn) in processes if not re.match("^(java|python)", pn)]:
+            process_logger = get_process_logger(self.options.debugger_output, pid, process_name)
+            try:
+                dbg.dump_info(
+                    root_logger, process_logger, pid, process_name, self.options.dump_core
+                    and check_dump_quota(max_dump_size_bytes, dbg.get_dump_ext()))
+            except Exception as err:  # pylint: disable=broad-except
+                root_logger.info("Error encountered when invoking debugger %s", err)
+                trapped_exceptions.append(traceback.format_exc())
+
+            # Dump java processes using jstack.
+        for (pid, process_name) in [(p, pn) for (p, pn) in processes if pn.startswith("java")]:
+            process_logger = get_process_logger(self.options.debugger_output, pid, process_name)
+            try:
+                jstack.dump_info(root_logger, pid)
+            except Exception as err:  # pylint: disable=broad-except
+                root_logger.info("Error encountered when invoking debugger %s", err)
+                trapped_exceptions.append(traceback.format_exc())
+
+            # Signal go processes to ensure they print out stack traces, and die on POSIX OSes.
+            # On Windows, this will simply kill the process since python emulates SIGABRT as
+            # TerminateProcess.
+            # Note: The stacktrace output may be captured elsewhere (i.e. resmoke).
+        for (pid, process_name) in [(p, pn) for (p, pn) in processes if pn in go_processes]:
+            root_logger.info("Sending signal SIGABRT to go process %s with PID %d", process_name, pid)
+            signal_process(root_logger, pid, signal.SIGABRT)
+
+        root_logger.info("Done analyzing all processes for hangs")
+
+        for exception in trapped_exceptions:
+            root_logger.info(exception)
+        if trapped_exceptions:
+            sys.exit(1)
