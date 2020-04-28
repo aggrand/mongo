@@ -631,16 +631,17 @@ def pname_match(match_type, pname, interesting_processes):
 
 
 class HangAnalyzer(interface.Subcommand):
-
     def __init__(self, options):
         self.options = options
         self.root_logger = None
-        self.interesting_processes = ["mongo", "mongod", "mongos", "_test", "dbtest", "python", "java"]
+        self.interesting_processes = [
+            "mongo", "mongod", "mongos", "_test", "dbtest", "python", "java"
+        ]
         self.go_processes = []
         self.process_ids = []
 
         self._configure_processes()
-    
+
     def execute(self):  # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         """
         Execute hang analysis.
@@ -652,7 +653,6 @@ class HangAnalyzer(interface.Subcommand):
         self._log_system_info()
 
         DebugExtractor.extract_debug_symbols(self.root_logger)
-
         [ps, dbg, jstack] = get_hang_analyzers()
 
         if ps is None or (dbg is None and jstack is None):
@@ -676,11 +676,13 @@ class HangAnalyzer(interface.Subcommand):
             missing_pids = set(self.process_ids) - running_pids
             if missing_pids:
                 self.root_logger.warning("The following requested process ids are not running %s",
-                                    list(missing_pids))
+                                         list(missing_pids))
         else:
-            processes = [(pid, pname) for (pid, pname) in all_processes
-                         if pname_match(self.options.process_match, pname, self.interesting_processes)
-                         and pid != os.getpid()]
+            processes = [
+                (pid, pname) for (pid, pname) in all_processes
+                if pname_match(self.options.process_match, pname, self.interesting_processes)
+                and pid != os.getpid()
+            ]
 
         self.root_logger.info("Found %d interesting processes %s", len(processes), processes)
 
@@ -693,18 +695,18 @@ class HangAnalyzer(interface.Subcommand):
             # a signal handler to wait for the signal since it supports POSIX signals.
             if _IS_WINDOWS:
                 self.root_logger.info("Calling SetEvent to signal python process %s with PID %d",
-                                 process_name, pid)
+                                      process_name, pid)
                 signal_event_object(self.root_logger, pid)
             else:
                 self.root_logger.info("Sending signal SIGUSR1 to python process %s with PID %d",
-                                 process_name, pid)
+                                      process_name, pid)
                 signal_process(self.root_logger, pid, signal.SIGUSR1)
 
         trapped_exceptions = []
 
         # Dump all processes, except python & java.
-        for (pid,
-             process_name) in [(p, pn) for (p, pn) in processes if not re.match("^(java|python)", pn)]:
+        for (pid, process_name) in [(p, pn) for (p, pn) in processes
+                                    if not re.match("^(java|python)", pn)]:
             process_logger = get_process_logger(self.options.debugger_output, pid, process_name)
             try:
                 dbg.dump_info(
@@ -728,7 +730,8 @@ class HangAnalyzer(interface.Subcommand):
             # TerminateProcess.
             # Note: The stacktrace output may be captured elsewhere (i.e. resmoke).
         for (pid, process_name) in [(p, pn) for (p, pn) in processes if pn in self.go_processes]:
-            self.root_logger.info("Sending signal SIGABRT to go process %s with PID %d", process_name, pid)
+            self.root_logger.info("Sending signal SIGABRT to go process %s with PID %d",
+                                  process_name, pid)
             signal_process(self.root_logger, pid, signal.SIGABRT)
 
         self.root_logger.info("Done analyzing all processes for hangs")
@@ -783,5 +786,5 @@ class HangAnalyzer(interface.Subcommand):
         except OSError:
             self.root_logger.warning("Cannot determine Unix Current Login")
         except AttributeError:
-            self.root_logger.warning("Cannot determine Unix Current Login, not supported on Windows")
-
+            self.root_logger.warning(
+                "Cannot determine Unix Current Login, not supported on Windows")
