@@ -634,69 +634,25 @@ class HangAnalyzer(interface.Subcommand):
 
     def __init__(self, options):
         self.options = options
-
+        self.root_logger = None
         self.interesting_processes = ["mongo", "mongod", "mongos", "_test", "dbtest", "python", "java"]
         self.go_processes = []
         self.process_ids = []
 
-        if self.options.debugger_output is None:
-            self.options.debugger_output = ['stdout']
-
-        if self.options.process_ids is not None:
-            # self.process_ids is an int list of PIDs
-            self.process_ids = [int(pid) for pid in self.options.process_ids.split(',')]
-
-        if self.options.process_names is not None:
-            self.interesting_processes = self.options.process_names.split(',')
-
-        if self.options.go_process_names is not None:
-            self.go_processes = self.options.go_process_names.split(',')
-            self.interesting_processes += self.go_processes
-
-    def _setup_logging(self):
-        self.root_logger = logging.Logger("hang_analyzer", level=logging.DEBUG)
-
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(logging.Formatter(fmt="%(message)s"))
-        self.root_logger.addHandler(handler)
-
-        self.root_logger.info("Python Version: %s", sys.version)
-        self.root_logger.info("OS: %s", platform.platform())
-
-    def _log_system_info(self):
-        try:
-            if _IS_WINDOWS or sys.platform == "cygwin":
-                distro = platform.win32_ver()
-                self.root_logger.info("Windows Distribution: %s", distro)
-            else:
-                distro = platform.linux_distribution()
-                self.root_logger.info("Linux Distribution: %s", distro)
-
-        except AttributeError:
-            self.root_logger.warning("Cannot determine Linux distro since Python is too old")
-
-        try:
-            uid = os.getuid()
-            self.root_logger.info("Current User: %s", uid)
-            current_login = os.getlogin()
-            self.root_logger.info("Current Login: %s", current_login)
-        except OSError:
-            self.root_logger.warning("Cannot determine Unix Current Login")
-        except AttributeError:
-            self.root_logger.warning("Cannot determine Unix Current Login, not supported on Windows")
-
-    # Basic procedure
-    #
-    # 1. Get a list of interesting processes
-    # 2. Dump useful information or take dumps
+        self._configure_processes()
+    
     def execute(self):  # pylint: disable=too-many-branches,too-many-locals,too-many-statements
-        """Execute hang analysis."""
+        """
+        Execute hang analysis.
+
+        1. Get a list of interesting processes
+        2. Dump useful information or take core dumps
+        """
         self._setup_logging()
         self._log_system_info()
 
         DebugExtractor.extract_debug_symbols(self.root_logger)
 
-        
         [ps, dbg, jstack] = get_hang_analyzers()
 
         if ps is None or (dbg is None and jstack is None):
@@ -781,3 +737,51 @@ class HangAnalyzer(interface.Subcommand):
             self.root_logger.info(exception)
         if trapped_exceptions:
             sys.exit(1)
+
+    def _configure_processes(self):
+        if self.options.debugger_output is None:
+            self.options.debugger_output = ['stdout']
+
+        if self.options.process_ids is not None:
+            # self.process_ids is an int list of PIDs
+            self.process_ids = [int(pid) for pid in self.options.process_ids.split(',')]
+
+        if self.options.process_names is not None:
+            self.interesting_processes = self.options.process_names.split(',')
+
+        if self.options.go_process_names is not None:
+            self.go_processes = self.options.go_process_names.split(',')
+            self.interesting_processes += self.go_processes
+
+    def _setup_logging(self):
+        self.root_logger = logging.Logger("hang_analyzer", level=logging.DEBUG)
+
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(logging.Formatter(fmt="%(message)s"))
+        self.root_logger.addHandler(handler)
+
+        self.root_logger.info("Python Version: %s", sys.version)
+        self.root_logger.info("OS: %s", platform.platform())
+
+    def _log_system_info(self):
+        try:
+            if _IS_WINDOWS or sys.platform == "cygwin":
+                distro = platform.win32_ver()
+                self.root_logger.info("Windows Distribution: %s", distro)
+            else:
+                distro = platform.linux_distribution()
+                self.root_logger.info("Linux Distribution: %s", distro)
+
+        except AttributeError:
+            self.root_logger.warning("Cannot determine Linux distro since Python is too old")
+
+        try:
+            uid = os.getuid()
+            self.root_logger.info("Current User: %s", uid)
+            current_login = os.getlogin()
+            self.root_logger.info("Current Login: %s", current_login)
+        except OSError:
+            self.root_logger.warning("Cannot determine Unix Current Login")
+        except AttributeError:
+            self.root_logger.warning("Cannot determine Unix Current Login, not supported on Windows")
+
