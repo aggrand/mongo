@@ -664,32 +664,7 @@ class HangAnalyzer(interface.Subcommand):
             self.root_logger.warning("hang_analyzer.py: Unsupported platform: %s", sys.platform)
             exit(1)
 
-        all_processes = ps.dump_processes(self.root_logger)
-
-        # Canonicalize the process names to lowercase to handle cases where the name of the Python
-        # process is /System/Library/.../Python on OS X and -p python is specified to hang_analyzer.py.
-        all_processes = [(pid, process_name.lower()) for (pid, process_name) in all_processes]
-
-        # Find all running interesting processes:
-        #   If a list of process_ids is supplied, match on that.
-        #   Otherwise, do a substring match on interesting_processes.
-        if self.process_ids:
-            processes = [(pid, pname) for (pid, pname) in all_processes
-                         if pid in self.process_ids and pid != os.getpid()]
-
-            running_pids = {pid for (pid, pname) in all_processes}
-            missing_pids = set(self.process_ids) - running_pids
-            if missing_pids:
-                self.root_logger.warning("The following requested process ids are not running %s",
-                                         list(missing_pids))
-        else:
-            processes = [
-                (pid, pname) for (pid, pname) in all_processes
-                if pname_match(self.options.process_match, pname, self.interesting_processes)
-                and pid != os.getpid()
-            ]
-
-        self.root_logger.info("Found %d interesting processes %s", len(processes), processes)
+        processes = self._get_processes(ps) 
 
         max_dump_size_bytes = int(self.options.max_core_dumps_size) * 1024 * 1024
 
@@ -793,3 +768,36 @@ class HangAnalyzer(interface.Subcommand):
         except AttributeError:
             self.root_logger.warning(
                 "Cannot determine Unix Current Login, not supported on Windows")
+
+    def _get_processes(self, ps):
+        """
+        Find all running interesting processes:
+        If a list of process_ids is supplied, match on that.
+        Otherwise, do a substring match on interesting_processes.
+
+        :param ps: Process lister object.
+        """
+        all_processes = ps.dump_processes(self.root_logger)
+
+        # Canonicalize the process names to lowercase to handle cases where the name of the Python
+        # process is /System/Library/.../Python on OS X and -p python is specified to hang_analyzer.py.
+        all_processes = [(pid, process_name.lower()) for (pid, process_name) in all_processes]
+
+        if self.process_ids:
+            processes = [(pid, pname) for (pid, pname) in all_processes
+                         if pid in self.process_ids and pid != os.getpid()]
+
+            running_pids = {pid for (pid, pname) in all_processes}
+            missing_pids = set(self.process_ids) - running_pids
+            if missing_pids:
+                self.root_logger.warning("The following requested process ids are not running %s",
+                                         list(missing_pids))
+        else:
+            processes = [
+                (pid, pname) for (pid, pname) in all_processes
+                if pname_match(self.options.process_match, pname, self.interesting_processes)
+                and pid != os.getpid()
+            ]
+
+        self.root_logger.info("Found %d interesting processes %s", len(processes), processes)
+        return processes
