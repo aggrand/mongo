@@ -589,7 +589,7 @@ class HangAnalyzer(interface.Subcommand):
                 self.root_logger.info("Error encountered when invoking debugger %s", err)
                 trapped_exceptions.append(traceback.format_exc())
 
-            # Dump java processes using jstack.
+        # Dump java processes using jstack.
         for (pid, process_name) in [(p, pn) for (p, pn) in processes if pn.startswith("java")]:
             process_logger = get_process_logger(self.options.debugger_output, pid, process_name)
             try:
@@ -598,10 +598,10 @@ class HangAnalyzer(interface.Subcommand):
                 self.root_logger.info("Error encountered when invoking debugger %s", err)
                 trapped_exceptions.append(traceback.format_exc())
 
-            # Signal go processes to ensure they print out stack traces, and die on POSIX OSes.
-            # On Windows, this will simply kill the process since python emulates SIGABRT as
-            # TerminateProcess.
-            # Note: The stacktrace output may be captured elsewhere (i.e. resmoke).
+        # Signal go processes to ensure they print out stack traces, and die on POSIX OSes.
+        # On Windows, this will simply kill the process since python emulates SIGABRT as
+        # TerminateProcess.
+        # Note: The stacktrace output may be captured elsewhere (i.e. resmoke).
         for (pid, process_name) in [(p, pn) for (p, pn) in processes if pn in self.go_processes]:
             self.root_logger.info("Sending signal SIGABRT to go process %s with PID %d",
                                   process_name, pid)
