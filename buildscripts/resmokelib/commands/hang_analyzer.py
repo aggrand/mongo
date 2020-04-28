@@ -27,6 +27,7 @@ import time
 from distutils import spawn  # pylint: disable=no-name-in-module
 from optparse import OptionParser
 from buildscripts.resmokelib.commands import interface
+from buildscripts.resmokelib.hang_analyzer import process_list
 _IS_WINDOWS = (sys.platform == "win32")
 
 if _IS_WINDOWS:
@@ -165,28 +166,6 @@ class WindowsDumper(object):
         return "mdmp"
 
 
-class WindowsProcessList(object):
-    """WindowsProcessList class."""
-
-    @staticmethod
-    def __find_ps():
-        """Find tasklist."""
-        return os.path.join(os.environ["WINDIR"], "system32", "tasklist.exe")
-
-    def dump_processes(self, logger):
-        """Get list of [Pid, Process Name]."""
-        ps = self.__find_ps()
-
-        logger.info("Getting list of processes using %s", ps)
-
-        ret = callo([ps, "/FO", "CSV"], logger)
-
-        buff = io.StringIO(ret)
-        csv_reader = csv.reader(buff)
-
-        return [[int(row[1]), row[0]] for row in csv_reader if row[1] != "PID"]
-
-
 # LLDB dumper is for MacOS X
 class LLDBDumper(object):
     """LLDBDumper class."""
@@ -260,28 +239,6 @@ class LLDBDumper(object):
     def get_dump_ext():
         """Return the dump file extension."""
         return "core"
-
-
-class DarwinProcessList(object):
-    """DarwinProcessList class."""
-
-    @staticmethod
-    def __find_ps():
-        """Find ps."""
-        return find_program('ps', ['/bin'])
-
-    def dump_processes(self, logger):
-        """Get list of [Pid, Process Name]."""
-        ps = self.__find_ps()
-
-        logger.info("Getting list of processes using %s", ps)
-
-        ret = callo([ps, "-axco", "pid,comm"], logger)
-
-        buff = io.StringIO(ret)
-        csv_reader = csv.reader(buff, delimiter=' ', quoting=csv.QUOTE_NONE, skipinitialspace=True)
-
-        return [[int(row[0]), row[1]] for row in csv_reader if row[0] != "PID"]
 
 
 # GDB dumper is for Linux & Solaris
@@ -407,52 +364,6 @@ class GDBDumper(object):
         return None
 
 
-class LinuxProcessList(object):
-    """LinuxProcessList class."""
-
-    @staticmethod
-    def __find_ps():
-        """Find ps."""
-        return find_program('ps', ['/bin', '/usr/bin'])
-
-    def dump_processes(self, logger):
-        """Get list of [Pid, Process Name]."""
-        ps = self.__find_ps()
-
-        logger.info("Getting list of processes using %s", ps)
-
-        call([ps, "--version"], logger)
-
-        ret = callo([ps, "-eo", "pid,args"], logger)
-
-        buff = io.StringIO(ret)
-        csv_reader = csv.reader(buff, delimiter=' ', quoting=csv.QUOTE_NONE, skipinitialspace=True)
-
-        return [[int(row[0]), os.path.split(row[1])[1]] for row in csv_reader if row[0] != "PID"]
-
-
-class SolarisProcessList(object):
-    """SolarisProcessList class."""
-
-    @staticmethod
-    def __find_ps():
-        """Find ps."""
-        return find_program('ps', ['/bin', '/usr/bin'])
-
-    def dump_processes(self, logger):
-        """Get list of [Pid, Process Name]."""
-        ps = self.__find_ps()
-
-        logger.info("Getting list of processes using %s", ps)
-
-        ret = callo([ps, "-eo", "pid,args"], logger)
-
-        buff = io.StringIO(ret)
-        csv_reader = csv.reader(buff, delimiter=' ', quoting=csv.QUOTE_NONE, skipinitialspace=True)
-
-        return [[int(row[0]), os.path.split(row[1])[1]] for row in csv_reader if row[0] != "PID"]
-
-
 # jstack is a JDK utility
 class JstackDumper(object):
     """JstackDumper class."""
@@ -547,25 +458,20 @@ def get_hang_analyzers():
 
     dbg = None
     jstack = None
-    ps = None
     if sys.platform.startswith("linux"):
         dbg = GDBDumper()
         jstack = JstackDumper()
-        ps = LinuxProcessList()
     elif sys.platform.startswith("sunos"):
         dbg = GDBDumper()
         jstack = JstackDumper()
-        ps = SolarisProcessList()
     elif _IS_WINDOWS or sys.platform == "cygwin":
         dbg = WindowsDumper()
         jstack = JstackWindowsDumper()
-        ps = WindowsProcessList()
     elif sys.platform == "darwin":
         dbg = LLDBDumper()
         jstack = JstackDumper()
-        ps = DarwinProcessList()
 
-    return [ps, dbg, jstack]
+    return [dbg, jstack]
 
 
 def check_dump_quota(quota, ext):
@@ -658,13 +564,15 @@ class HangAnalyzer(interface.Subcommand):
         self._log_system_info()
 
         DebugExtractor.extract_debug_symbols(self.root_logger)
-        [ps, dbg, jstack] = get_hang_analyzers()
+        [dbg, jstack] = get_hang_analyzers()
+
+        ps = process_list.get_lister()
 
         if ps is None or (dbg is None and jstack is None):
             self.root_logger.warning("hang_analyzer.py: Unsupported platform: %s", sys.platform)
             exit(1)
 
-        processes = self._get_processes(ps) 
+        processes = self._get_processes(ps)
 
         max_dump_size_bytes = int(self.options.max_core_dumps_size) * 1024 * 1024
 
@@ -771,7 +679,8 @@ class HangAnalyzer(interface.Subcommand):
 
     def _get_processes(self, ps):
         """
-        Find all running interesting processes:
+        Find all running interesting processes.
+
         If a list of process_ids is supplied, match on that.
         Otherwise, do a substring match on interesting_processes.
 
