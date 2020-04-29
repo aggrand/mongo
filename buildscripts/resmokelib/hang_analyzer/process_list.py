@@ -6,7 +6,6 @@ import sys
 import csv
 from collections import namedtuple
 
-from buildscripts.resmokelib import core
 from buildscripts.resmokelib.hang_analyzer.ha_utils import call, callo, find_program
 
 Pinfo = namedtuple('Pinfo', ['pid', 'name'])
