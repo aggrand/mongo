@@ -596,6 +596,7 @@ def parse_command_line(sys_args, **kwargs):
 
     return subcommand_obj
 
+
 def set_run_options(argstr=''):
     """Populate the config module variables for the 'run' subcommand with the default options."""
     parser, parsed_args = _parse(['run'] + shlex.split(argstr))

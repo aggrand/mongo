@@ -251,7 +251,7 @@ class TestParseArgs(unittest.TestCase):
     """Unit tests for the parse() function."""
 
     def test_files_at_end(self):
-        _, args = _parser._parse([
+        _, args = _parser._parse([  #pylint: disable=protected-access
             "run",
             "--suites=my_suite1,my_suite2",
             "test_file1.js",
@@ -268,7 +268,7 @@ class TestParseArgs(unittest.TestCase):
         self.assertEqual(args.suite_files, "my_suite1,my_suite2")
 
     def test_files_in_the_middle(self):
-        _, args = _parser._parse([
+        _, args = _parser._parse([  #pylint: disable=protected-access
             "run",
             "--storageEngine=my_storage_engine",
             "test_file1.js",
