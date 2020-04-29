@@ -236,7 +236,7 @@ class GDBDumper(Dumper):
 
         call([dbg, "--version"], logger)
 
-        script_dir = os.path.dirname(os.path.abspath(__file__))
+        script_dir = "buildscripts"
         root_logger.info("dir %s", script_dir)
         gdb_dir = os.path.join(script_dir, "gdb")
         mongo_script = os.path.join(gdb_dir, "mongo.py")
