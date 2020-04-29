@@ -45,6 +45,12 @@ class Dumper(object):
         """
         raise NotImplementedError("dump_info must be implemented in OS-specific subclasses")
 
+    @staticmethod
+    def get_dump_ext():
+        """Return the dump file extension."""
+        raise NotImplementedError("get_dump_ext must be implemented in OS-specific subclasses")
+
+
 class WindowsDumper(Dumper):
     """WindowsDumper class."""
 
