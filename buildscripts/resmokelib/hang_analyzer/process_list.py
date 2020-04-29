@@ -7,9 +7,11 @@ import csv
 import logging
 import subprocess
 from distutils import spawn  # pylint: disable=no-name-in-module
+from collections import namedtuple
 
 from buildscripts.resmokelib import core
 
+Pinfo = namedtuple('Pinfo', ['pid', 'name'])
 
 def get_processes(process_ids, interesting_processes, process_match, logger):
     """
@@ -23,7 +25,7 @@ def get_processes(process_ids, interesting_processes, process_match, logger):
     :param process_match: Member of ProcessMatch enum type describe the match to use.
     :param logger: Where to log output.
 
-    :return: A list of (pid, pname) pairs.
+    :return: A list Pinfo objects for matched processes.
     """
     ps = get_lister()
 
@@ -34,7 +36,7 @@ def get_processes(process_ids, interesting_processes, process_match, logger):
     all_processes = [(pid, process_name.lower()) for (pid, process_name) in all_processes]
 
     if process_ids:
-        processes = [(pid, pname) for (pid, pname) in all_processes
+        processes = [Pinfo(pid=pid, name=pname) for (pid, pname) in all_processes
                      if pid in process_ids and pid != os.getpid()]
 
         running_pids = {pid for (pid, pname) in all_processes}
@@ -44,7 +46,7 @@ def get_processes(process_ids, interesting_processes, process_match, logger):
                            list(missing_pids))
     else:
         processes = [
-            (pid, pname) for (pid, pname) in all_processes
+            Pinfo(pid=pid, name=pname) for (pid, pname) in all_processes
             if _pname_match(process_match, pname, interesting_processes) and pid != os.getpid()
         ]
 

@@ -208,22 +208,22 @@ class HangAnalyzer(interface.Subcommand):
         trapped_exceptions = []
 
         # Dump all processes, except python & java.
-        for (pid, process_name) in [(p, pn) for (p, pn) in processes
-                                    if not re.match("^(java|python)", pn)]:
-            process_logger = get_process_logger(self.options.debugger_output, pid, process_name)
+        for pinfo in [pinfo for pinfo in processes
+                                    if not re.match("^(java|python)", pinfo.name)]:
+            process_logger = get_process_logger(self.options.debugger_output, pinfo.pid, pinfo.name)
             try:
                 dumpers.dbg.dump_info(
-                    self.root_logger, process_logger, pid, process_name, self.options.dump_core
+                    self.root_logger, process_logger, pinfo.pid, pinfo.name, self.options.dump_core
                     and check_dump_quota(max_dump_size_bytes, dumpers.dbg.get_dump_ext()))
             except Exception as err:  # pylint: disable=broad-except
                 self.root_logger.info("Error encountered when invoking debugger %s", err)
                 trapped_exceptions.append(traceback.format_exc())
 
         # Dump java processes using jstack.
-        for (pid, process_name) in [(p, pn) for (p, pn) in processes if pn.startswith("java")]:
-            process_logger = get_process_logger(self.options.debugger_output, pid, process_name)
+        for pinfo in [pinfo for pinfo in processes if pinfo.name.startswith("java")]:
+            process_logger = get_process_logger(self.options.debugger_output, pinfo.pid, pinfo.name)
             try:
-                dumpers.jstack.dump_info(self.root_logger, pid)
+                dumpers.jstack.dump_info(self.root_logger, pinfo.pid)
             except Exception as err:  # pylint: disable=broad-except
                 self.root_logger.info("Error encountered when invoking debugger %s", err)
                 trapped_exceptions.append(traceback.format_exc())
@@ -232,10 +232,10 @@ class HangAnalyzer(interface.Subcommand):
         # On Windows, this will simply kill the process since python emulates SIGABRT as
         # TerminateProcess.
         # Note: The stacktrace output may be captured elsewhere (i.e. resmoke).
-        for (pid, process_name) in [(p, pn) for (p, pn) in processes if pn in self.go_processes]:
+        for pinfo in [pinfo for pinfo in processes if pinfo.name in self.go_processes]:
             self.root_logger.info("Sending signal SIGABRT to go process %s with PID %d",
-                                  process_name, pid)
-            signal_process(self.root_logger, pid, signal.SIGABRT)
+                                  pinfo.name, pinfo.pid)
+            signal_process(self.root_logger, pinfo.pid, signal.SIGABRT)
 
         self.root_logger.info("Done analyzing all processes for hangs")
 
