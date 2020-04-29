@@ -29,7 +29,23 @@ def get_dumpers():
 
     return [dbg, jstack]
 
-class WindowsDumper(object):
+class Dumper(object):
+    """Abstract base class for all OS-specific dumpers."""
+
+    def dump_info(  # pylint: disable=too-many-arguments,too-many-locals
+            self, root_logger, logger, pid, process_name, take_dump):
+        """
+        Perform dump for a process.
+
+        :param root_logger: Top-level logger
+        :param logger: Logger to output dump info to
+        :param pid: PID of the process to dump
+        :param process_name: Name of the process to dump
+        :param take_dump: Whether to take a core dump
+        """
+        raise NotImplementedError("dump_info must be implemented in OS-specific subclasses")
+
+class WindowsDumper(Dumper):
     """WindowsDumper class."""
 
     @staticmethod
@@ -102,7 +118,7 @@ class WindowsDumper(object):
 
 
 # LLDB dumper is for MacOS X
-class LLDBDumper(object):
+class LLDBDumper(Dumper):
     """LLDBDumper class."""
 
     @staticmethod
@@ -177,7 +193,7 @@ class LLDBDumper(object):
 
 
 # GDB dumper is for Linux & Solaris
-class GDBDumper(object):
+class GDBDumper(Dumper):
     """GDBDumper class."""
 
     @staticmethod
@@ -300,7 +316,7 @@ class GDBDumper(object):
 
 
 # jstack is a JDK utility
-class JstackDumper(object):
+class JstackDumper(Dumper):
     """JstackDumper class."""
 
     @staticmethod
@@ -325,7 +341,7 @@ class JstackDumper(object):
 
 
 # jstack is a JDK utility
-class JstackWindowsDumper(object):
+class JstackWindowsDumper(Dumper):
     """JstackWindowsDumper class."""
 
     @staticmethod
