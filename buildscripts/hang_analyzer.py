@@ -511,7 +511,7 @@ class DebugExtractor(object):
             DebugExtractor._exxtract_tar(path, root_logger)
             root_logger.debug('Finished: Extract debug-symbols from %s.', path)
         # We never want this to cause the whole task to fail.
-        # The rest of hang_analyzer.py will continue to work without the
+        # The hang analyzer will continue to work without the
         # symbols it just won't be quite as helpful.
         # pylint: disable=broad-except
         except Exception as exception:
@@ -719,13 +719,13 @@ def main():  # pylint: disable=too-many-branches,too-many-locals,too-many-statem
     [ps, dbg, jstack] = get_hang_analyzers()
 
     if ps is None or (dbg is None and jstack is None):
-        root_logger.warning("hang_analyzer.py: Unsupported platform: %s", sys.platform)
+        root_logger.warning("Hang analyzer: Unsupported platform: %s", sys.platform)
         exit(1)
 
     all_processes = ps.dump_processes(root_logger)
 
     # Canonicalize the process names to lowercase to handle cases where the name of the Python
-    # process is /System/Library/.../Python on OS X and -p python is specified to hang_analyzer.py.
+    # process is /System/Library/.../Python on OS X and -p python is specified to the hang analyzer.
     all_processes = [(pid, process_name.lower()) for (pid, process_name) in all_processes]
 
     # Find all running interesting processes:

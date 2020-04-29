@@ -30,7 +30,7 @@ def get_processes(process_ids, interesting_processes, process_match, logger):
     all_processes = ps.dump_processes(logger)
 
     # Canonicalize the process names to lowercase to handle cases where the name of the Python
-    # process is /System/Library/.../Python on OS X and -p python is specified to hang_analyzer.py.
+    # process is /System/Library/.../Python on OS X and -p python is specified to the hang analyzer.
     all_processes = [(pid, process_name.lower()) for (pid, process_name) in all_processes]
 
     if process_ids:
