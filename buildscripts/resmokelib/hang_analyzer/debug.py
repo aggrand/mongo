@@ -22,7 +22,7 @@ def extract_debug_symbols(root_logger):
         _exxtract_tar(path, root_logger)
         root_logger.debug('Finished: Extract debug-symbols from %s.', path)
     # We never want this to cause the whole task to fail.
-    # The rest of hang_analyzer.py will continue to work without the
+    # The rest of the hang analyzer will continue to work without the
     # symbols it just won't be quite as helpful.
     # pylint: disable=broad-except
     except Exception as exception:
