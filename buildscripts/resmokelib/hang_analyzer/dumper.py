@@ -12,6 +12,7 @@ from buildscripts.resmokelib.hang_analyzer.ha_utils import call, callo, find_pro
 
 Dumpers = namedtuple('Dumpers', ['dbg', 'jstack'])
 
+
 def get_dumpers():
     """Return OS-appropriate dumpers."""
 
@@ -31,6 +32,7 @@ def get_dumpers():
         jstack = JstackDumper()
 
     return Dumpers(dbg=dbg, jstack=jstack)
+
 
 class Dumper(object):
     """Abstract base class for OS-specific dumpers."""
@@ -89,10 +91,12 @@ class WindowsDumper(Dumper):
         dbg = self.__find_debugger(root_logger, debugger)
 
         if dbg is None:
-            root_logger.warning("Debugger %s not found, skipping dumping of %d", debugger, pinfo.pid)
+            root_logger.warning("Debugger %s not found, skipping dumping of %d", debugger,
+                                pinfo.pid)
             return
 
-        root_logger.info("Debugger %s, analyzing %s process with PID %d", dbg, pinfo.name, pinfo.pid)
+        root_logger.info("Debugger %s, analyzing %s process with PID %d", dbg, pinfo.name,
+                         pinfo.pid)
 
         dump_command = ""
         if take_dump:
@@ -141,10 +145,12 @@ class LLDBDumper(Dumper):
         dbg = self.__find_debugger(debugger)
 
         if dbg is None:
-            root_logger.warning("Debugger %s not found, skipping dumping of %d", debugger, pinfo.pid)
+            root_logger.warning("Debugger %s not found, skipping dumping of %d", debugger,
+                                pinfo.pid)
             return
 
-        root_logger.info("Debugger %s, analyzing %s process with PID %d", dbg, pinfo.name, pinfo.pid)
+        root_logger.info("Debugger %s, analyzing %s process with PID %d", dbg, pinfo.name,
+                         pinfo.pid)
 
         lldb_version = callo([dbg, "--version"], logger)
 
@@ -219,7 +225,8 @@ class GDBDumper(Dumper):
             logger.warning("Debugger %s not found, skipping dumping of %d", debugger, pinfo.pid)
             return
 
-        root_logger.info("Debugger %s, analyzing %s process with PID %d", dbg, pinfo.name, pinfo.pid)
+        root_logger.info("Debugger %s, analyzing %s process with PID %d", dbg, pinfo.name,
+                         pinfo.pid)
 
         dump_command = ""
         if take_dump:

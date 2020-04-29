@@ -71,8 +71,7 @@ class HangAnalyzer(interface.Subcommand):
         trapped_exceptions = []
 
         # Dump all processes, except python & java.
-        for pinfo in [pinfo for pinfo in processes
-                                    if not re.match("^(java|python)", pinfo.name)]:
+        for pinfo in [pinfo for pinfo in processes if not re.match("^(java|python)", pinfo.name)]:
             process_logger = self._get_process_logger(pinfo)
             try:
                 dumpers.dbg.dump_info(
@@ -96,8 +95,8 @@ class HangAnalyzer(interface.Subcommand):
         # TerminateProcess.
         # Note: The stacktrace output may be captured elsewhere (i.e. resmoke).
         for pinfo in [pinfo for pinfo in processes if pinfo.name in self.go_processes]:
-            self.root_logger.info("Sending signal SIGABRT to go process %s with PID %d",
-                                  pinfo.name, pinfo.pid)
+            self.root_logger.info("Sending signal SIGABRT to go process %s with PID %d", pinfo.name,
+                                  pinfo.pid)
             signal_process(self.root_logger, pinfo.pid, signal.SIGABRT)
 
         self.root_logger.info("Done analyzing all processes for hangs")
@@ -105,7 +104,8 @@ class HangAnalyzer(interface.Subcommand):
         for exception in trapped_exceptions:
             self.root_logger.info(exception)
         if trapped_exceptions:
-            raise RuntimeError("Exceptions were thrown while dumping. There may still be some valid dumps.")
+            raise RuntimeError(
+                "Exceptions were thrown while dumping. There may still be some valid dumps.")
 
     def _configure_processes(self):
         if self.options.debugger_output is None:
@@ -173,6 +173,7 @@ class HangAnalyzer(interface.Subcommand):
             process_logger.addHandler(f_handler)
 
         return process_logger
+
 
 def _check_dump_quota(quota, ext):
     """Check if sum of the files with ext is within the specified quota in megabytes."""
