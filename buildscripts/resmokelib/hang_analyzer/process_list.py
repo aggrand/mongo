@@ -11,6 +11,7 @@ from buildscripts.resmokelib.hang_analyzer.ha_utils import call, callo, find_pro
 
 Pinfo = namedtuple('Pinfo', ['pid', 'name'])
 
+
 def get_processes(process_ids, interesting_processes, process_match, logger):
     """
     Find all running interesting processes.
@@ -34,8 +35,10 @@ def get_processes(process_ids, interesting_processes, process_match, logger):
     all_processes = [(pid, process_name.lower()) for (pid, process_name) in all_processes]
 
     if process_ids:
-        processes = [Pinfo(pid=pid, name=pname) for (pid, pname) in all_processes
-                     if pid in process_ids and pid != os.getpid()]
+        processes = [
+            Pinfo(pid=pid, name=pname) for (pid, pname) in all_processes
+            if pid in process_ids and pid != os.getpid()
+        ]
 
         running_pids = {pid for (pid, pname) in all_processes}
         missing_pids = set(process_ids) - running_pids
@@ -169,6 +172,7 @@ class SolarisProcessList(ProcessList):
         csv_reader = csv.reader(buff, delimiter=' ', quoting=csv.QUOTE_NONE, skipinitialspace=True)
 
         return [[int(row[0]), os.path.split(row[1])[1]] for row in csv_reader if row[0] != "PID"]
+
 
 def _pname_match(match_type, pname, interesting_processes):
     """Return True if the pname matches an interesting_processes."""

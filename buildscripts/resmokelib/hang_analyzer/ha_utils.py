@@ -16,6 +16,7 @@ if _IS_WINDOWS:
     import win32event
     import win32api
 
+
 def call(args, logger):
     """Call subprocess on args list."""
     logger.info(str(args))
@@ -32,6 +33,7 @@ def call(args, logger):
         logger.error("Bad exit code %d", ret)
         raise Exception("Bad exit code %d from %s" % (ret, " ".join(args)))
 
+
 def find_program(prog, paths):
     """Find the specified program in env PATH, or tries a set of paths."""
     for loc in paths:
@@ -41,10 +43,12 @@ def find_program(prog, paths):
 
     return spawn.find_executable(prog)
 
+
 def callo(args, logger):
     """Call subprocess on args string."""
     logger.info("%s", str(args))
     return subprocess.check_output(args).decode('utf-8', 'replace')
+
 
 def signal_python(logger, pinfo):
     """Send appropriate dumping signal to python processes."""
@@ -52,13 +56,14 @@ def signal_python(logger, pinfo):
     # On Windows, we set up an event object to wait on a signal. For Cygwin, we register
     # a signal handler to wait for the signal since it supports POSIX signals.
     if _IS_WINDOWS:
-        logger.info("Calling SetEvent to signal python process %s with PID %d",
-                              pinfo.name, pinfo.pid)
+        logger.info("Calling SetEvent to signal python process %s with PID %d", pinfo.name,
+                    pinfo.pid)
         signal_event_object(logger, pinfo.pid)
     else:
-        logger.info("Sending signal SIGUSR1 to python process %s with PID %d",
-                              pinfo.name, pinfo.pid)
+        logger.info("Sending signal SIGUSR1 to python process %s with PID %d", pinfo.name,
+                    pinfo.pid)
         signal_process(logger, pinfo.pid, signal.SIGUSR1)
+
 
 def signal_event_object(logger, pid):
     """Signal the Windows event object."""
@@ -97,5 +102,3 @@ def signal_process(logger, pid, signalnum):
 
     except AttributeError:
         logger.error("Cannot send signal to a process on Windows")
-
-
