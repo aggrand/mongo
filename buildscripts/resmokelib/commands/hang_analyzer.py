@@ -105,7 +105,7 @@ class HangAnalyzer(interface.Subcommand):
         for exception in trapped_exceptions:
             self.root_logger.info(exception)
         if trapped_exceptions:
-            sys.exit(1)
+            raise RuntimeError("Exceptions were thrown while dumping. There may still be some valid dumps.")
 
     def _configure_processes(self):
         if self.options.debugger_output is None:
