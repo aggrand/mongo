@@ -5,9 +5,12 @@ import logging
 import tempfile
 import itertools
 import subprocess
+from collections import namedtuple
 from distutils import spawn  # pylint: disable=no-name-in-module
 
 from buildscripts.resmokelib import core
+
+Dumpers = namedtuple('Dumpers', ['dbg', 'jstack'])
 
 def get_dumpers():
     """Return OS-appropriate dumpers."""
@@ -27,7 +30,7 @@ def get_dumpers():
         dbg = LLDBDumper()
         jstack = JstackDumper()
 
-    return [dbg, jstack]
+    return Dumpers(dbg=dbg, jstack=jstack)
 
 class Dumper(object):
     """Abstract base class for OS-specific dumpers."""

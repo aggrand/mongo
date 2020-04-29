@@ -184,7 +184,7 @@ class HangAnalyzer(interface.Subcommand):
         self._log_system_info()
 
         DebugExtractor.extract_debug_symbols(self.root_logger)
-        [dbg, jstack] = dumper.get_dumpers()
+        dumpers = dumper.get_dumpers()
 
         processes = process_list.get_processes(self.process_ids, self.interesting_processes,
                                                self.options.process_match, self.root_logger)
@@ -212,9 +212,9 @@ class HangAnalyzer(interface.Subcommand):
                                     if not re.match("^(java|python)", pn)]:
             process_logger = get_process_logger(self.options.debugger_output, pid, process_name)
             try:
-                dbg.dump_info(
+                dumpers.dbg.dump_info(
                     self.root_logger, process_logger, pid, process_name, self.options.dump_core
-                    and check_dump_quota(max_dump_size_bytes, dbg.get_dump_ext()))
+                    and check_dump_quota(max_dump_size_bytes, dumpers.dbg.get_dump_ext()))
             except Exception as err:  # pylint: disable=broad-except
                 self.root_logger.info("Error encountered when invoking debugger %s", err)
                 trapped_exceptions.append(traceback.format_exc())
@@ -223,7 +223,7 @@ class HangAnalyzer(interface.Subcommand):
         for (pid, process_name) in [(p, pn) for (p, pn) in processes if pn.startswith("java")]:
             process_logger = get_process_logger(self.options.debugger_output, pid, process_name)
             try:
-                jstack.dump_info(self.root_logger, pid)
+                dumpers.jstack.dump_info(self.root_logger, pid)
             except Exception as err:  # pylint: disable=broad-except
                 self.root_logger.info("Error encountered when invoking debugger %s", err)
                 trapped_exceptions.append(traceback.format_exc())
