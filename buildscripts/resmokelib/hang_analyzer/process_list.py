@@ -4,9 +4,6 @@ import os
 import io
 import sys
 import csv
-import logging
-import subprocess
-from distutils import spawn  # pylint: disable=no-name-in-module
 from collections import namedtuple
 
 from buildscripts.resmokelib import core
