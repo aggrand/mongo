@@ -1,12 +1,11 @@
 """Tools to dump debug info for each OS."""
+
 import os
 import sys
-import logging
 import tempfile
 import itertools
-import subprocess
-from collections import namedtuple
 from distutils import spawn  # pylint: disable=no-name-in-module
+from collections import namedtuple
 
 from buildscripts.resmokelib import core
 from buildscripts.resmokelib.hang_analyzer.ha_utils import call, callo, find_program

@@ -9,24 +9,20 @@ A prototype hang analyzer for Evergreen integration to help investigate test tim
 
 Supports Linux, MacOS X, Solaris, and Windows.
 """
-import io
-import csv
-import glob
-import logging
-import os
-import platform
 import re
-import signal
-import subprocess
+import os
 import sys
+import glob
+import signal
+import logging
+import platform
 import traceback
-import time
-from distutils import spawn  # pylint: disable=no-name-in-module
-from optparse import OptionParser
+
 from buildscripts.resmokelib.commands import interface
-from buildscripts.resmokelib.hang_analyzer import process_list
-from buildscripts.resmokelib.hang_analyzer import dumper
+
 from buildscripts.resmokelib.hang_analyzer import debug
+from buildscripts.resmokelib.hang_analyzer import dumper
+from buildscripts.resmokelib.hang_analyzer import process_list
 from buildscripts.resmokelib.hang_analyzer.ha_utils import signal_process, signal_python
 
 
@@ -138,7 +134,7 @@ class HangAnalyzer(interface.Subcommand):
 
     def _log_system_info(self):
         try:
-            if _IS_WINDOWS or sys.platform == "cygwin":
+            if sys.platform == "win32" or sys.platform == "cygwin":
                 distro = platform.win32_ver()
                 self.root_logger.info("Windows Distribution: %s", distro)
             else:
