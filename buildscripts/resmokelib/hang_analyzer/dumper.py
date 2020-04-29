@@ -9,6 +9,7 @@ from collections import namedtuple
 from distutils import spawn  # pylint: disable=no-name-in-module
 
 from buildscripts.resmokelib import core
+from buildscripts.resmokelib.hang_analyzer.ha_utils import call, callo, find_program
 
 Dumpers = namedtuple('Dumpers', ['dbg', 'jstack'])
 
@@ -357,37 +358,3 @@ class JstackWindowsDumper(object):
         """Dump java thread stack traces to the logger."""
 
         root_logger.warning("Debugger jstack not supported, skipping dumping of %d", pid)
-
-# TODO: Defined twice
-def call(args, logger):
-    """Call subprocess on args list."""
-    logger.info(str(args))
-
-    # Use a common pipe for stdout & stderr for logging.
-    process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    logger_pipe = core.pipe.LoggerPipe(logger, logging.INFO, process.stdout)
-    logger_pipe.wait_until_started()
-
-    ret = process.wait()
-    logger_pipe.wait_until_finished()
-
-    if ret != 0:
-        logger.error("Bad exit code %d", ret)
-        raise Exception("Bad exit code %d from %s" % (ret, " ".join(args)))
-
-# TODO: Defined twice
-def find_program(prog, paths):
-    """Find the specified program in env PATH, or tries a set of paths."""
-    for loc in paths:
-        full_prog = os.path.join(loc, prog)
-        if os.path.exists(full_prog):
-            return full_prog
-
-    return spawn.find_executable(prog)
-
-# TODO: Defined twice
-def callo(args, logger):
-    """Call subprocess on args string."""
-    logger.info("%s", str(args))
-
-    return subprocess.check_output(args).decode('utf-8', 'replace')

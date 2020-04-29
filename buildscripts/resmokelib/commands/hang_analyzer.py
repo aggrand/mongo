@@ -26,132 +26,8 @@ from optparse import OptionParser
 from buildscripts.resmokelib.commands import interface
 from buildscripts.resmokelib.hang_analyzer import process_list
 from buildscripts.resmokelib.hang_analyzer import dumper
-
-_IS_WINDOWS = (sys.platform == "win32")
-
-if _IS_WINDOWS:
-    import win32event
-    import win32api
-
-def get_process_logger(debugger_output, pinfo):
-    """Return the process logger from options specified."""
-    process_logger = logging.Logger("process", level=logging.DEBUG)
-    process_logger.mongo_process_filename = None
-
-    if 'stdout' in debugger_output:
-        s_handler = logging.StreamHandler(sys.stdout)
-        s_handler.setFormatter(logging.Formatter(fmt="%(message)s"))
-        process_logger.addHandler(s_handler)
-
-    if 'file' in debugger_output:
-        filename = "debugger_%s_%d.log" % (os.path.splitext(pinfo.name)[0], pinfo.pid)
-        process_logger.mongo_process_filename = filename
-        f_handler = logging.FileHandler(filename=filename, mode="w")
-        f_handler.setFormatter(logging.Formatter(fmt="%(message)s"))
-        process_logger.addHandler(f_handler)
-
-    return process_logger
-
-class DebugExtractor(object):
-    """Extracts `mongo-debugsymbols.tgz`."""
-
-    @staticmethod
-    def extract_debug_symbols(root_logger):
-        """
-        Extract debug symbols. Idempotent.
-
-        :param root_logger: logger to use
-        :return: None
-        """
-        path = os.path.join(os.getcwd(), 'mongo-debugsymbols.tgz')
-        root_logger.debug('Starting: Extract debug-symbols from %s.', path)
-        if not os.path.exists(path):
-            root_logger.info('Debug-symbols archive-file does not exist. '
-                             'Hang-Analyzer may not complete successfully, '
-                             'or debug-symbols may already be extracted.')
-            return
-        try:
-            DebugExtractor._exxtract_tar(path, root_logger)
-            root_logger.debug('Finished: Extract debug-symbols from %s.', path)
-        # We never want this to cause the whole task to fail.
-        # The rest of hang_analyzer.py will continue to work without the
-        # symbols it just won't be quite as helpful.
-        # pylint: disable=broad-except
-        except Exception as exception:
-            root_logger.warning('Error when extracting %s: %s', path, exception)
-
-    @staticmethod
-    def _exxtract_tar(path, root_logger):
-        import shutil
-        # The file name is always .tgz but it's "secretly" a zip file on Windows :(
-        compressed_format = 'zip' if _IS_WINDOWS else 'gztar'
-        shutil.unpack_archive(path, format=compressed_format)
-        for (src, dest) in DebugExtractor._extracted_files_to_copy():
-            if os.path.exists(dest):
-                root_logger.debug('Debug symbol %s already exists, not copying from %s.', dest, src)
-                continue
-            shutil.copy(src, dest)
-            root_logger.debug('Copied debug symbol %s.', dest)
-
-    @staticmethod
-    def _extracted_files_to_copy():
-        out = []
-        for ext in ['debug', 'dSYM', 'pdb']:
-            for file in ['mongo', 'mongod', 'mongos']:
-                haystack = os.path.join('dist-test', 'bin', '{file}.{ext}'.format(
-                    file=file, ext=ext))
-                for needle in glob.glob(haystack):
-                    out.append((needle, os.path.join(os.getcwd(), os.path.basename(needle))))
-        return out
-
-def check_dump_quota(quota, ext):
-    """Check if sum of the files with ext is within the specified quota in megabytes."""
-
-    files = glob.glob("*." + ext)
-
-    size_sum = 0
-    for file_name in files:
-        size_sum += os.path.getsize(file_name)
-
-    return size_sum <= quota
-
-def signal_event_object(logger, pid):
-    """Signal the Windows event object."""
-
-    # Use unique event_name created.
-    event_name = "Global\\Mongo_Python_" + str(pid)
-
-    try:
-        desired_access = win32event.EVENT_MODIFY_STATE
-        inherit_handle = False
-        task_timeout_handle = win32event.OpenEvent(desired_access, inherit_handle, event_name)
-    except win32event.error as err:
-        logger.info("Exception from win32event.OpenEvent with error: %s", err)
-        return
-
-    try:
-        win32event.SetEvent(task_timeout_handle)
-    except win32event.error as err:
-        logger.info("Exception from win32event.SetEvent with error: %s", err)
-    finally:
-        win32api.CloseHandle(task_timeout_handle)
-
-    logger.info("Waiting for process to report")
-    time.sleep(5)
-
-
-def signal_process(logger, pid, signalnum):
-    """Signal process with signal, N/A on Windows."""
-    try:
-        os.kill(pid, signalnum)
-
-        logger.info("Waiting for process to report")
-        time.sleep(5)
-    except OSError as err:
-        logger.error("Hit OS error trying to signal process: %s", err)
-
-    except AttributeError:
-        logger.error("Cannot send signal to a process on Windows")
+from buildscripts.resmokelib.hang_analyzer import debug
+from buildscripts.resmokelib.hang_analyzer.ha_utils import signal_process, signal_python
 
 
 class HangAnalyzer(interface.Subcommand):
@@ -183,7 +59,7 @@ class HangAnalyzer(interface.Subcommand):
         self._setup_logging()
         self._log_system_info()
 
-        DebugExtractor.extract_debug_symbols(self.root_logger)
+        debug.extract_debug_symbols(self.root_logger)
         dumpers = dumper.get_dumpers()
 
         processes = process_list.get_processes(self.process_ids, self.interesting_processes,
@@ -193,35 +69,26 @@ class HangAnalyzer(interface.Subcommand):
 
         # Dump python processes by signalling them. The resmoke.py process will generate
         # the report.json, when signalled, so we do this before attaching to other processes.
-        for (pid, process_name) in [(p, pn) for (p, pn) in processes if pn.startswith("python")]:
-            # On Windows, we set up an event object to wait on a signal. For Cygwin, we register
-            # a signal handler to wait for the signal since it supports POSIX signals.
-            if _IS_WINDOWS:
-                self.root_logger.info("Calling SetEvent to signal python process %s with PID %d",
-                                      process_name, pid)
-                signal_event_object(self.root_logger, pid)
-            else:
-                self.root_logger.info("Sending signal SIGUSR1 to python process %s with PID %d",
-                                      process_name, pid)
-                signal_process(self.root_logger, pid, signal.SIGUSR1)
+        for pinfo in [pinfo for pinfo in processes if pinfo.name.startswith("python")]:
+            signal_python(self.root_logger, pinfo)
 
         trapped_exceptions = []
 
         # Dump all processes, except python & java.
         for pinfo in [pinfo for pinfo in processes
                                     if not re.match("^(java|python)", pinfo.name)]:
-            process_logger = get_process_logger(self.options.debugger_output, pinfo)
+            process_logger = self._get_process_logger(pinfo)
             try:
                 dumpers.dbg.dump_info(
                     self.root_logger, process_logger, pinfo, self.options.dump_core
-                    and check_dump_quota(max_dump_size_bytes, dumpers.dbg.get_dump_ext()))
+                    and _check_dump_quota(max_dump_size_bytes, dumpers.dbg.get_dump_ext()))
             except Exception as err:  # pylint: disable=broad-except
                 self.root_logger.info("Error encountered when invoking debugger %s", err)
                 trapped_exceptions.append(traceback.format_exc())
 
         # Dump java processes using jstack.
         for pinfo in [pinfo for pinfo in processes if pinfo.name.startswith("java")]:
-            process_logger = get_process_logger(self.options.debugger_output, pinfo)
+            process_logger = self._get_process_logger(pinfo)
             try:
                 dumpers.jstack.dump_info(self.root_logger, pinfo.pid)
             except Exception as err:  # pylint: disable=broad-except
@@ -291,3 +158,33 @@ class HangAnalyzer(interface.Subcommand):
         except AttributeError:
             self.root_logger.warning(
                 "Cannot determine Unix Current Login, not supported on Windows")
+
+    def _get_process_logger(self, pinfo):
+        """Return the process logger from options specified."""
+        process_logger = logging.Logger("process", level=logging.DEBUG)
+        process_logger.mongo_process_filename = None
+
+        if 'stdout' in self.options.debugger_output:
+            s_handler = logging.StreamHandler(sys.stdout)
+            s_handler.setFormatter(logging.Formatter(fmt="%(message)s"))
+            process_logger.addHandler(s_handler)
+
+        if 'file' in self.options.debugger_output:
+            filename = "debugger_%s_%d.log" % (os.path.splitext(pinfo.name)[0], pinfo.pid)
+            process_logger.mongo_process_filename = filename
+            f_handler = logging.FileHandler(filename=filename, mode="w")
+            f_handler.setFormatter(logging.Formatter(fmt="%(message)s"))
+            process_logger.addHandler(f_handler)
+
+        return process_logger
+
+def _check_dump_quota(quota, ext):
+    """Check if sum of the files with ext is within the specified quota in megabytes."""
+
+    files = glob.glob("*." + ext)
+
+    size_sum = 0
+    for file_name in files:
+        size_sum += os.path.getsize(file_name)
+
+    return size_sum <= quota
