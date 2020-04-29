@@ -33,7 +33,7 @@ if _IS_WINDOWS:
     import win32event
     import win32api
 
-def get_process_logger(debugger_output, pid, process_name):
+def get_process_logger(debugger_output, pinfo):
     """Return the process logger from options specified."""
     process_logger = logging.Logger("process", level=logging.DEBUG)
     process_logger.mongo_process_filename = None
@@ -44,7 +44,7 @@ def get_process_logger(debugger_output, pid, process_name):
         process_logger.addHandler(s_handler)
 
     if 'file' in debugger_output:
-        filename = "debugger_%s_%d.log" % (os.path.splitext(process_name)[0], pid)
+        filename = "debugger_%s_%d.log" % (os.path.splitext(pinfo.name)[0], pinfo.pid)
         process_logger.mongo_process_filename = filename
         f_handler = logging.FileHandler(filename=filename, mode="w")
         f_handler.setFormatter(logging.Formatter(fmt="%(message)s"))
@@ -210,10 +210,10 @@ class HangAnalyzer(interface.Subcommand):
         # Dump all processes, except python & java.
         for pinfo in [pinfo for pinfo in processes
                                     if not re.match("^(java|python)", pinfo.name)]:
-            process_logger = get_process_logger(self.options.debugger_output, pinfo.pid, pinfo.name)
+            process_logger = get_process_logger(self.options.debugger_output, pinfo)
             try:
                 dumpers.dbg.dump_info(
-                    self.root_logger, process_logger, pinfo.pid, pinfo.name, self.options.dump_core
+                    self.root_logger, process_logger, pinfo, self.options.dump_core
                     and check_dump_quota(max_dump_size_bytes, dumpers.dbg.get_dump_ext()))
             except Exception as err:  # pylint: disable=broad-except
                 self.root_logger.info("Error encountered when invoking debugger %s", err)
@@ -221,7 +221,7 @@ class HangAnalyzer(interface.Subcommand):
 
         # Dump java processes using jstack.
         for pinfo in [pinfo for pinfo in processes if pinfo.name.startswith("java")]:
-            process_logger = get_process_logger(self.options.debugger_output, pinfo.pid, pinfo.name)
+            process_logger = get_process_logger(self.options.debugger_output, pinfo)
             try:
                 dumpers.jstack.dump_info(self.root_logger, pinfo.pid)
             except Exception as err:  # pylint: disable=broad-except
