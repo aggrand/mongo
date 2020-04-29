@@ -20,7 +20,7 @@ def get_processes(process_ids, interesting_processes, process_match, logger):
 
     :param process_ids: List of PIDs to match on.
     :param interesting_processes: List of process names to match on.
-    :param process_match: Member of ProcessMatch enum type describe the match to use.
+    :param process_match: String describing the process match to use.
     :param logger: Where to log output.
 
     :return: A list Pinfo objects for matched processes.
