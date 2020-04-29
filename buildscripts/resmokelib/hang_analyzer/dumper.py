@@ -30,7 +30,7 @@ def get_dumpers():
     return [dbg, jstack]
 
 class Dumper(object):
-    """Abstract base class for all OS-specific dumpers."""
+    """Abstract base class for OS-specific dumpers."""
 
     def dump_info(  # pylint: disable=too-many-arguments,too-many-locals
             self, root_logger, logger, pid, process_name, take_dump):
@@ -322,7 +322,7 @@ class GDBDumper(Dumper):
 
 
 # jstack is a JDK utility
-class JstackDumper(Dumper):
+class JstackDumper(object):
     """JstackDumper class."""
 
     @staticmethod
@@ -347,7 +347,7 @@ class JstackDumper(Dumper):
 
 
 # jstack is a JDK utility
-class JstackWindowsDumper(Dumper):
+class JstackWindowsDumper(object):
     """JstackWindowsDumper class."""
 
     @staticmethod
