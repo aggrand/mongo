@@ -1,9 +1,9 @@
 """Functions to list processes in each OS and search for interesting processes."""
 
-import io
-import csv
 import os
+import io
 import sys
+import csv
 import logging
 import subprocess
 from distutils import spawn  # pylint: disable=no-name-in-module
