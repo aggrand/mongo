@@ -36,14 +36,13 @@ class Dumper(object):
     """Abstract base class for OS-specific dumpers."""
 
     def dump_info(  # pylint: disable=too-many-arguments,too-many-locals
-            self, root_logger, logger, pid, process_name, take_dump):
+            self, root_logger, logger, pinfo, take_dump):
         """
         Perform dump for a process.
 
         :param root_logger: Top-level logger
         :param logger: Logger to output dump info to
-        :param pid: PID of the process to dump
-        :param process_name: Name of the process to dump
+        :param pinfo: A Pinfo describing the process
         :param take_dump: Whether to take a core dump
         """
         raise NotImplementedError("dump_info must be implemented in OS-specific subclasses")
@@ -84,21 +83,21 @@ class WindowsDumper(Dumper):
         return None
 
     def dump_info(  # pylint: disable=too-many-arguments
-            self, root_logger, logger, pid, process_name, take_dump):
+            self, root_logger, logger, pinfo, take_dump):
         """Dump useful information to the console."""
         debugger = "cdb.exe"
         dbg = self.__find_debugger(root_logger, debugger)
 
         if dbg is None:
-            root_logger.warning("Debugger %s not found, skipping dumping of %d", debugger, pid)
+            root_logger.warning("Debugger %s not found, skipping dumping of %d", debugger, pinfo.pid)
             return
 
-        root_logger.info("Debugger %s, analyzing %s process with PID %d", dbg, process_name, pid)
+        root_logger.info("Debugger %s, analyzing %s process with PID %d", dbg, pinfo.name, pinfo.pid)
 
         dump_command = ""
         if take_dump:
             # Dump to file, dump_<process name>.<pid>.mdmp
-            dump_file = "dump_%s.%d.%s" % (os.path.splitext(process_name)[0], pid,
+            dump_file = "dump_%s.%d.%s" % (os.path.splitext(pinfo.name)[0], pinfo.pid,
                                            self.get_dump_ext())
             dump_command = ".dump /ma %s" % dump_file
             root_logger.info("Dumping core to %s", dump_file)
@@ -116,9 +115,9 @@ class WindowsDumper(Dumper):
             "q"  # Quit
         ]
 
-        call([dbg, '-c', ";".join(cmds), '-p', str(pid)], logger)
+        call([dbg, '-c', ";".join(cmds), '-p', str(pinfo.pid)], logger)
 
-        root_logger.info("Done analyzing %s process with PID %d", process_name, pid)
+        root_logger.info("Done analyzing %s process with PID %d", pinfo.name, pinfo.pid)
 
     @staticmethod
     def get_dump_ext():
@@ -136,16 +135,16 @@ class LLDBDumper(Dumper):
         return find_program(debugger, ['/usr/bin'])
 
     def dump_info(  # pylint: disable=too-many-arguments,too-many-locals
-            self, root_logger, logger, pid, process_name, take_dump):
+            self, root_logger, logger, pinfo, take_dump):
         """Dump info."""
         debugger = "lldb"
         dbg = self.__find_debugger(debugger)
 
         if dbg is None:
-            root_logger.warning("Debugger %s not found, skipping dumping of %d", debugger, pid)
+            root_logger.warning("Debugger %s not found, skipping dumping of %d", debugger, pinfo.pid)
             return
 
-        root_logger.info("Debugger %s, analyzing %s process with PID %d", dbg, process_name, pid)
+        root_logger.info("Debugger %s, analyzing %s process with PID %d", dbg, pinfo.name, pinfo.pid)
 
         lldb_version = callo([dbg, "--version"], logger)
 
@@ -168,12 +167,12 @@ class LLDBDumper(Dumper):
         dump_command = ""
         if take_dump:
             # Dump to file, dump_<process name>.<pid>.core
-            dump_file = "dump_%s.%d.%s" % (process_name, pid, self.get_dump_ext())
+            dump_file = "dump_%s.%d.%s" % (pinfo.name, pinfo.pid, self.get_dump_ext())
             dump_command = "process save-core %s" % dump_file
             root_logger.info("Dumping core to %s", dump_file)
 
         cmds = [
-            "attach -p %d" % pid,
+            "attach -p %d" % pinfo.pid,
             "target modules list",
             "thread backtrace all",
             dump_command,
@@ -193,7 +192,7 @@ class LLDBDumper(Dumper):
         call(['cat', tf.name], logger)
         call([dbg, '--source', tf.name], logger)
 
-        root_logger.info("Done analyzing %s process with PID %d", process_name, pid)
+        root_logger.info("Done analyzing %s process with PID %d", pinfo.name, pinfo.pid)
 
     @staticmethod
     def get_dump_ext():
@@ -211,21 +210,21 @@ class GDBDumper(Dumper):
         return find_program(debugger, ['/opt/mongodbtoolchain/gdb/bin', '/usr/bin'])
 
     def dump_info(  # pylint: disable=too-many-arguments,too-many-locals
-            self, root_logger, logger, pid, process_name, take_dump):
+            self, root_logger, logger, pinfo, take_dump):
         """Dump info."""
         debugger = "gdb"
         dbg = self.__find_debugger(debugger)
 
         if dbg is None:
-            logger.warning("Debugger %s not found, skipping dumping of %d", debugger, pid)
+            logger.warning("Debugger %s not found, skipping dumping of %d", debugger, pinfo.pid)
             return
 
-        root_logger.info("Debugger %s, analyzing %s process with PID %d", dbg, process_name, pid)
+        root_logger.info("Debugger %s, analyzing %s process with PID %d", dbg, pinfo.name, pinfo.pid)
 
         dump_command = ""
         if take_dump:
             # Dump to file, dump_<process name>.<pid>.core
-            dump_file = "dump_%s.%d.%s" % (process_name, pid, self.get_dump_ext())
+            dump_file = "dump_%s.%d.%s" % (pinfo.name, pinfo.pid, self.get_dump_ext())
             dump_command = "gcore %s" % dump_file
             root_logger.info("Dumping core to %s", dump_file)
 
@@ -245,7 +244,7 @@ class GDBDumper(Dumper):
         mongodb_show_locks = "mongodb-show-locks"
         mongodb_uniqstack = "mongodb-uniqstack mongodb-bt-if-active"
         mongodb_waitsfor_graph = "mongodb-waitsfor-graph debugger_waitsfor_%s_%d.gv" % \
-            (process_name, pid)
+            (pinfo.name, pinfo.pid)
         mongodb_javascript_stack = "mongodb-javascript-stack"
         mongod_dump_sessions = "mongod-dump-sessions"
         mongodb_dump_mutexes = "mongodb-dump-mutexes"
@@ -281,8 +280,8 @@ class GDBDumper(Dumper):
         cmds = [
             "set interactive-mode off",
             "set print thread-events off",  # Suppress GDB messages of threads starting/finishing.
-            "file %s" % process_name,  # Solaris must load the process to read the symbols.
-            "attach %d" % pid,
+            "file %s" % pinfo.name,  # Solaris must load the process to read the symbols.
+            "attach %d" % pinfo.pid,
             "info sharedlibrary",
             "info threads",  # Dump a simple list of commands to get the thread name
             "set python print-stack full",
@@ -307,7 +306,7 @@ class GDBDumper(Dumper):
         call([dbg, "--quiet", "--nx"] + list(
             itertools.chain.from_iterable([['-ex', b] for b in cmds])), logger)
 
-        root_logger.info("Done analyzing %s process with PID %d", process_name, pid)
+        root_logger.info("Done analyzing %s process with PID %d", pinfo.name, pinfo.pid)
 
     @staticmethod
     def get_dump_ext():
