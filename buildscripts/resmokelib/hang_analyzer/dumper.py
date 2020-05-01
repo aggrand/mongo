@@ -20,9 +20,6 @@ def get_dumpers():
     if sys.platform.startswith("linux"):
         dbg = GDBDumper()
         jstack = JstackDumper()
-    elif sys.platform.startswith("sunos"):
-        dbg = GDBDumper()
-        jstack = JstackDumper()
     elif sys.platform == "win32" or sys.platform == "cygwin":
         dbg = WindowsDumper()
         jstack = JstackWindowsDumper()
@@ -205,7 +202,7 @@ class LLDBDumper(Dumper):
         return "core"
 
 
-# GDB dumper is for Linux & Solaris
+# GDB dumper is for Linux
 class GDBDumper(Dumper):
     """GDBDumper class."""
 
@@ -255,19 +252,6 @@ class GDBDumper(Dumper):
         mongod_dump_sessions = "mongod-dump-sessions"
         mongodb_dump_mutexes = "mongodb-dump-mutexes"
 
-        # The following MongoDB python extensions do not run on Solaris.
-        if sys.platform.startswith("sunos"):
-            source_mongo_lock = ""
-            # SERVER-28234 - GDB frame information not available on Solaris for a templatized
-            # function
-            mongodb_dump_locks = ""
-
-            # SERVER-28373 - GDB thread-local variables not available on Solaris
-            mongodb_show_locks = ""
-            mongodb_waitsfor_graph = ""
-            mongodb_javascript_stack = ""
-            mongod_dump_sessions = ""
-
         if not logger.mongo_process_filename:
             raw_stacks_commands = []
         else:
@@ -286,7 +270,6 @@ class GDBDumper(Dumper):
         cmds = [
             "set interactive-mode off",
             "set print thread-events off",  # Suppress GDB messages of threads starting/finishing.
-            "file %s" % pinfo.name,  # Solaris must load the process to read the symbols.
             "attach %d" % pinfo.pid,
             "info sharedlibrary",
             "info threads",  # Dump a simple list of commands to get the thread name

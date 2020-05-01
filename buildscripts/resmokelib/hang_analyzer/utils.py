@@ -104,6 +104,7 @@ def signal_process(logger, pid, signalnum):
     except AttributeError:
         logger.error("Cannot send signal to a process on Windows")
 
+
 def check_dump_quota(quota, ext):
     """Check if sum of the files with ext is within the specified quota in megabytes."""
 

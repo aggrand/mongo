@@ -58,8 +58,6 @@ def _get_lister():
     """Return _ProcessList object for OS."""
     if sys.platform.startswith("linux"):
         ps = _LinuxProcessList()
-    elif sys.platform.startswith("sunos"):
-        ps = _SolarisProcessList()
     elif sys.platform == "win32" or sys.platform == "cygwin":
         ps = _WindowsProcessList()
     elif sys.platform == "darwin":
@@ -142,28 +140,6 @@ class _LinuxProcessList(_ProcessList):
         logger.info("Getting list of processes using %s", ps)
 
         call([ps, "--version"], logger)
-
-        ret = callo([ps, "-eo", "pid,args"], logger)
-
-        buff = io.StringIO(ret)
-        csv_reader = csv.reader(buff, delimiter=' ', quoting=csv.QUOTE_NONE, skipinitialspace=True)
-
-        return [[int(row[0]), os.path.split(row[1])[1]] for row in csv_reader if row[0] != "PID"]
-
-
-class _SolarisProcessList(_ProcessList):
-    """_SolarisProcessList class."""
-
-    @staticmethod
-    def __find_ps():
-        """Find ps."""
-        return find_program('ps', ['/bin', '/usr/bin'])
-
-    def dump_processes(self, logger):
-        """Get list of [Pid, Process Name]."""
-        ps = self.__find_ps()
-
-        logger.info("Getting list of processes using %s", ps)
 
         ret = callo([ps, "-eo", "pid,args"], logger)
 

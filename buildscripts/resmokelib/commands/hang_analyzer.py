@@ -7,7 +7,7 @@ A prototype hang analyzer for Evergreen integration to help investigate test tim
     and run the tools from step 1. The list of processes can be provided as an option.
 3. Java processes will be dumped using jstack, if available.
 
-Supports Linux, MacOS X, Solaris, and Windows.
+Supports Linux, MacOS X, and Windows.
 """
 import re
 import os
