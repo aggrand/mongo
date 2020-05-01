@@ -6,7 +6,7 @@ import sys
 import csv
 from collections import namedtuple
 
-from buildscripts.resmokelib.hang_analyzer.ha_utils import call, callo, find_program
+from buildscripts.resmokelib.hang_analyzer.utils import call, callo, find_program
 
 Pinfo = namedtuple('Pinfo', ['pid', 'name'])
 
@@ -25,7 +25,7 @@ def get_processes(process_ids, interesting_processes, process_match, logger):
 
     :return: A list Pinfo objects for matched processes.
     """
-    ps = get_lister()
+    ps = _get_lister()
 
     all_processes = ps.dump_processes(logger)
 
@@ -54,23 +54,23 @@ def get_processes(process_ids, interesting_processes, process_match, logger):
     return processes
 
 
-def get_lister():
-    """Return ProcessList object for OS."""
+def _get_lister():
+    """Return _ProcessList object for OS."""
     if sys.platform.startswith("linux"):
-        ps = LinuxProcessList()
+        ps = _LinuxProcessList()
     elif sys.platform.startswith("sunos"):
-        ps = SolarisProcessList()
+        ps = _SolarisProcessList()
     elif sys.platform == "win32" or sys.platform == "cygwin":
-        ps = WindowsProcessList()
+        ps = _WindowsProcessList()
     elif sys.platform == "darwin":
-        ps = DarwinProcessList()
+        ps = _DarwinProcessList()
     else:
         raise OSError("Hang analyzer: Unsupported platform: {}".format(sys.platform))
 
     return ps
 
 
-class ProcessList(object):
+class _ProcessList(object):
     """Abstract base class for all process listers."""
 
     def dump_processes(self, logger):
@@ -83,8 +83,8 @@ class ProcessList(object):
         raise NotImplementedError("dump_process must be implemented in OS-specific subclasses")
 
 
-class WindowsProcessList(ProcessList):
-    """WindowsProcessList class."""
+class _WindowsProcessList(_ProcessList):
+    """_WindowsProcessList class."""
 
     @staticmethod
     def __find_ps():
@@ -105,8 +105,8 @@ class WindowsProcessList(ProcessList):
         return [[int(row[1]), row[0]] for row in csv_reader if row[1] != "PID"]
 
 
-class DarwinProcessList(ProcessList):
-    """DarwinProcessList class."""
+class _DarwinProcessList(_ProcessList):
+    """_DarwinProcessList class."""
 
     @staticmethod
     def __find_ps():
@@ -127,8 +127,8 @@ class DarwinProcessList(ProcessList):
         return [[int(row[0]), row[1]] for row in csv_reader if row[0] != "PID"]
 
 
-class LinuxProcessList(ProcessList):
-    """LinuxProcessList class."""
+class _LinuxProcessList(_ProcessList):
+    """_LinuxProcessList class."""
 
     @staticmethod
     def __find_ps():
@@ -151,8 +151,8 @@ class LinuxProcessList(ProcessList):
         return [[int(row[0]), os.path.split(row[1])[1]] for row in csv_reader if row[0] != "PID"]
 
 
-class SolarisProcessList(ProcessList):
-    """SolarisProcessList class."""
+class _SolarisProcessList(_ProcessList):
+    """_SolarisProcessList class."""
 
     @staticmethod
     def __find_ps():

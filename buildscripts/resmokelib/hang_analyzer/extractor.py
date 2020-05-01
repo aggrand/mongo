@@ -20,7 +20,7 @@ def extract_debug_symbols(root_logger):
                          'or debug-symbols may already be extracted.')
         return
     try:
-        _exxtract_tar(path, root_logger)
+        _extract_tar(path, root_logger)
         root_logger.debug('Finished: Extract debug-symbols from %s.', path)
     # We never want this to cause the whole task to fail.
     # The rest of the hang analyzer will continue to work without the
@@ -30,7 +30,7 @@ def extract_debug_symbols(root_logger):
         root_logger.warning('Error when extracting %s: %s', path, exception)
 
 
-def _exxtract_tar(path, root_logger):
+def _extract_tar(path, root_logger):
     import shutil
     # The file name is always .tgz but it's "secretly" a zip file on Windows :(
     compressed_format = 'zip' if sys.platform == "win32" else 'gztar'

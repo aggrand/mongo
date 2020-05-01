@@ -12,7 +12,6 @@ Supports Linux, MacOS X, Solaris, and Windows.
 import re
 import os
 import sys
-import glob
 import signal
 import logging
 import platform
@@ -20,10 +19,10 @@ import traceback
 
 from buildscripts.resmokelib.commands import interface
 
-from buildscripts.resmokelib.hang_analyzer import debug
+from buildscripts.resmokelib.hang_analyzer import extractor
 from buildscripts.resmokelib.hang_analyzer import dumper
 from buildscripts.resmokelib.hang_analyzer import process_list
-from buildscripts.resmokelib.hang_analyzer.ha_utils import signal_process, signal_python
+from buildscripts.resmokelib.hang_analyzer.utils import signal_process, signal_python, check_dump_quota
 
 
 class HangAnalyzer(interface.Subcommand):
@@ -55,7 +54,7 @@ class HangAnalyzer(interface.Subcommand):
         self._setup_logging()
         self._log_system_info()
 
-        debug.extract_debug_symbols(self.root_logger)
+        extractor.extract_debug_symbols(self.root_logger)
         dumpers = dumper.get_dumpers()
 
         processes = process_list.get_processes(self.process_ids, self.interesting_processes,
@@ -76,7 +75,7 @@ class HangAnalyzer(interface.Subcommand):
             try:
                 dumpers.dbg.dump_info(
                     self.root_logger, process_logger, pinfo, self.options.dump_core
-                    and _check_dump_quota(max_dump_size_bytes, dumpers.dbg.get_dump_ext()))
+                    and check_dump_quota(max_dump_size_bytes, dumpers.dbg.get_dump_ext()))
             except Exception as err:  # pylint: disable=broad-except
                 self.root_logger.info("Error encountered when invoking debugger %s", err)
                 trapped_exceptions.append(traceback.format_exc())
@@ -173,15 +172,3 @@ class HangAnalyzer(interface.Subcommand):
             process_logger.addHandler(f_handler)
 
         return process_logger
-
-
-def _check_dump_quota(quota, ext):
-    """Check if sum of the files with ext is within the specified quota in megabytes."""
-
-    files = glob.glob("*." + ext)
-
-    size_sum = 0
-    for file_name in files:
-        size_sum += os.path.getsize(file_name)
-
-    return size_sum <= quota
