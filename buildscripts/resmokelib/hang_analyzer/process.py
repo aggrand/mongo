@@ -2,7 +2,6 @@
 
 import os
 import sys
-import glob
 import time
 import signal
 import logging
@@ -103,15 +102,3 @@ def signal_process(logger, pid, signalnum):
 
     except AttributeError:
         logger.error("Cannot send signal to a process on Windows")
-
-
-def check_dump_quota(quota, ext):
-    """Check if sum of the files with ext is within the specified quota in megabytes."""
-
-    files = glob.glob("*." + ext)
-
-    size_sum = 0
-    for file_name in files:
-        size_sum += os.path.getsize(file_name)
-
-    return size_sum <= quota

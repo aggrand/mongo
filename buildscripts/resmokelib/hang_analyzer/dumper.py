@@ -7,7 +7,7 @@ import itertools
 from distutils import spawn  # pylint: disable=no-name-in-module
 from collections import namedtuple
 
-from buildscripts.resmokelib.hang_analyzer.utils import call, callo, find_program
+from buildscripts.resmokelib.hang_analyzer.process import call, callo, find_program
 
 Dumpers = namedtuple('Dumpers', ['dbg', 'jstack'])
 
