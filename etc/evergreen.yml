@@ -6019,10 +6019,6 @@ tasks:
   name: jsCore
   tags: ["jscore", "common"]
   commands:
-  - command: timeout.update
-    params:
-      # 5 minutes
-      exec_timeout_secs: 200
   - func: "do setup"
   - func: "run tests"
     vars:
