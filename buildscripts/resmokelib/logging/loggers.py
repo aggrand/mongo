@@ -14,6 +14,7 @@ FIXTURE_LOGGER_NAME = "fixture"
 TESTS_LOGGER_NAME = "tests"
 
 EXECUTOR_LOGGER = None
+FIXTURE_LOGGER = None
 
 
 def _build_logger_server(logging_config):
@@ -38,10 +39,12 @@ def configure_loggers(logging_config):
     buildlogger.BUILDLOGGER_FALLBACK.addHandler(
         _fallback_buildlogger_handler(include_logger_name=False))
     build_logger_server = _build_logger_server(logging_config)
-    fixture_logger = FixtureRootLogger(logging_config, build_logger_server)
     tests_logger = TestsRootLogger(logging_config, build_logger_server)
+
+    global FIXTURE_LOGGER # pylint: disable=global-statement
+    FIXTURE_LOGGER = FixtureRootLogger(logging_config, build_logger_server)
     global EXECUTOR_LOGGER  # pylint: disable=global-statement
-    EXECUTOR_LOGGER = ExecutorRootLogger(logging_config, build_logger_server, fixture_logger,
+    EXECUTOR_LOGGER = ExecutorRootLogger(logging_config, build_logger_server,
                                          tests_logger)
 
 
@@ -136,10 +139,9 @@ class RootLogger(BaseLogger):
 class ExecutorRootLogger(RootLogger):
     """Class for the "executor" top-level logger."""
 
-    def __init__(self, logging_config, build_logger_server, fixture_root_logger, tests_root_logger):
+    def __init__(self, logging_config, build_logger_server, tests_root_logger):
         """Initialize an ExecutorRootLogger."""
         RootLogger.__init__(self, EXECUTOR_LOGGER_NAME, logging_config, build_logger_server)
-        self.fixture_root_logger = fixture_root_logger
         self.tests_root_logger = tests_root_logger
 
     def new_resmoke_logger(self):
@@ -148,7 +150,7 @@ class ExecutorRootLogger(RootLogger):
 
     def new_job_logger(self, test_kind, job_num):
         """Create a new child JobLogger."""
-        return JobLogger(test_kind, job_num, self, self.fixture_root_logger)
+        return JobLogger(test_kind, job_num, self) 
 
     def new_testqueue_logger(self, test_kind):
         """Create a new TestQueueLogger that will be a child of the "tests" root logger."""
@@ -162,17 +164,15 @@ class ExecutorRootLogger(RootLogger):
 class JobLogger(BaseLogger):
     """JobLogger class."""
 
-    def __init__(self, test_kind, job_num, parent, fixture_root_logger):
+    def __init__(self, test_kind, job_num, parent):
         """Initialize a JobLogger.
 
         :param test_kind: the test kind (e.g. js_test, db_test, etc.).
         :param job_num: a job number.
-        :param fixture_root_logger: the root logger for the fixture logs.
         """
         name = "executor:%s:job%d" % (test_kind, job_num)
         BaseLogger.__init__(self, name, parent=parent)
         self.job_num = job_num
-        self.fixture_root_logger = fixture_root_logger
         if self.build_logger_server:
             # If we're configured to log messages to the buildlogger server, then request a new
             # build_id for this job.
@@ -190,7 +190,7 @@ class JobLogger(BaseLogger):
 
     def new_fixture_logger(self, fixture_class):
         """Create a new fixture logger that will be a child of the "fixture" root logger."""
-        return FixtureLogger(fixture_class, self.job_num, self.build_id, self.fixture_root_logger)
+        return FixtureLogger(fixture_class, self.job_num, self.build_id)
 
     def new_test_logger(self, test_shortname, test_basename, command, parent):
         """Create a new test logger that will be a child of the given parent."""
@@ -257,15 +257,14 @@ class FixtureRootLogger(RootLogger):
 class FixtureLogger(BaseLogger):
     """FixtureLogger class."""
 
-    def __init__(self, fixture_class, job_num, build_id, fixture_root_logger):
+    def __init__(self, fixture_class, job_num, build_id):
         """Initialize a FixtureLogger.
 
         :param fixture_class: the name of the fixture class.
         :param job_num: the number of the job the fixture is running on.
         :param build_id: the build logger build id, if any.
-        :param fixture_root_logger: the root logger for the fixture logs.
         """
-        BaseLogger.__init__(self, "%s:job%d" % (fixture_class, job_num), parent=fixture_root_logger)
+        BaseLogger.__init__(self, "%s:job%d" % (fixture_class, job_num), parent=FIXTURE_LOGGER)
         self.fixture_class = fixture_class
         self.job_num = job_num
         self._add_build_logger_handler(build_id)
