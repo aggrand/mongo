@@ -83,13 +83,6 @@ class BaseLogger(logging.Logger):
             return getattr(self.parent, "logging_config", None)
         return None
 
-    @staticmethod
-    def get_formatter(logger_info):
-        """Return formatter."""
-        log_format = logger_info.get("format", _DEFAULT_FORMAT)
-        return formatters.ISO8601Formatter(fmt=log_format)
-
-
 class RootLogger(BaseLogger):
     """A custom class for top-level loggers (executor, fixture, tests)."""
 
@@ -106,7 +99,7 @@ class RootLogger(BaseLogger):
         if self.name not in self.logging_config:
             raise ValueError("Logging configuration should contain the %s component" % self.name)
         logger_info = self.logging_config[self.name]
-        formatter = self.get_formatter(logger_info)
+        formatter = _get_formatter(logger_info)
 
         for handler_info in logger_info.get("handlers", []):
             self._add_handler(handler_info, formatter)
@@ -219,7 +212,7 @@ class TestLogger(BaseLogger):
         handler_info = _get_buildlogger_handler_info(logger_info)
         if handler_info is not None:
             handler = BUILDLOGGER_SERVER.get_test_handler(build_id, test_id, handler_info)
-            handler.setFormatter(self.get_formatter(logger_info))
+            handler.setFormatter(_get_formatter(logger_info))
             self.addHandler(handler)
 
     def new_test_thread_logger(self, test_kind, thread_id):
@@ -247,7 +240,7 @@ class FixtureLogger(BaseLogger):
         handler_info = _get_buildlogger_handler_info(logger_info)
         if handler_info is not None:
             handler = BUILDLOGGER_SERVER.get_global_handler(build_id, handler_info)
-            handler.setFormatter(self.get_formatter(logger_info))
+            handler.setFormatter(_get_formatter(logger_info))
             self.addHandler(handler)
 
     def new_fixture_node_logger(self, node_name):
@@ -306,7 +299,6 @@ class HookLogger(BaseLogger):
 
 # Util methods
 
-
 def _fallback_buildlogger_handler(include_logger_name=True):
     """Return a handler that writes to stderr."""
     if include_logger_name:
@@ -328,3 +320,8 @@ def _get_buildlogger_handler_info(logger_info):
         if handler_info.pop("class") == "buildlogger":
             return handler_info
     return None
+
+def _get_formatter(logger_info):
+    """Return formatter."""
+    log_format = logger_info.get("format", _DEFAULT_FORMAT)
+    return formatters.ISO8601Formatter(fmt=log_format)
