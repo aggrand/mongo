@@ -190,7 +190,9 @@ class TestLogger(logging.Logger):
 
     def new_test_thread_logger(self, test_kind, thread_id):
         """Create a new child test thread logger."""
-        return BaseLogger("%s:%s" % (test_kind, thread_id), parent=self)
+        logger = logging.Logger("%s:%s" % (test_kind, thread_id))
+        logger.parent = self
+        return logger
 
 
 class FixtureLogger(logging.Logger):
@@ -204,7 +206,7 @@ class FixtureLogger(logging.Logger):
         :param build_id: the build logger build id, if any.
         """
         name = "%s:job%d" % (fixture_class, job_num)
-        logging.Logger.__init__(self, name) 
+        logging.Logger.__init__(self, name)
 
         self.parent = FIXTURE_LOGGER
         self.fixture_class = fixture_class
@@ -236,7 +238,7 @@ class FixtureNodeLogger(logging.Logger):
         :param fixture_logger: the parent fixture logger.
         """
         name = "%s:job%d:%s" % (fixture_class, job_num, node_name)
-        logging.Logger.__init__(self, name) 
+        logging.Logger.__init__(self, name)
 
         self.parent = fixture_logger
         self.fixture_class = fixture_class
@@ -256,7 +258,7 @@ class TestQueueLogger(logging.Logger):
 
         :param test_kind: the test kind (e.g. js_test, db_test, cpp_unit_test, etc.).
         """
-        logging.Logger.__init__(self, name=test_kind) 
+        logging.Logger.__init__(self, name=test_kind)
         self.parent = TESTS_LOGGER
 
 
