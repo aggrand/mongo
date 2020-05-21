@@ -46,48 +46,29 @@ def configure_loggers():
     BUILDLOGGER_SERVER = _build_logger_server()
 
     global TESTS_LOGGER # pylint: disable=global-statement
-    TESTS_LOGGER = RootLogger(TESTS_LOGGER_NAME)
+    TESTS_LOGGER = create_root_logger(TESTS_LOGGER_NAME)
     global FIXTURE_LOGGER # pylint: disable=global-statement
-    FIXTURE_LOGGER = RootLogger(FIXTURE_LOGGER_NAME)
+    FIXTURE_LOGGER = create_root_logger(FIXTURE_LOGGER_NAME)
     global EXECUTOR_LOGGER  # pylint: disable=global-statement
-    EXECUTOR_LOGGER = RootLogger(EXECUTOR_LOGGER_NAME)
+    EXECUTOR_LOGGER = create_root_logger(EXECUTOR_LOGGER_NAME)
 
-class RootLogger(logging.Logger):
-    """A custom class for top-level loggers (executor, fixture, tests)."""
+def create_root_logger(name):
+    """
+    Creates and configures a new root logger.
 
-    def __init__(self, name):
-        """Initialize a RootLogger.
+    :param name: The name of the new root logger.
+    """
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+    if name not in config.LOGGING_CONFIG:
+        raise ValueError("Logging configuration should contain the %s component" % name)
+    logger_info = config.LOGGING_CONFIG[name]
+    formatter = _get_formatter(logger_info)
 
-        :param name: the logger name.
-        """
-        logging.Logger.__init__(self, name)
-        self._configure()
+    for handler_info in logger_info.get("handlers", []):
+        _add_handler(logger, handler_info, formatter)
 
-    def _configure(self):
-        if self.name not in config.LOGGING_CONFIG:
-            raise ValueError("Logging configuration should contain the %s component" % self.name)
-        logger_info = config.LOGGING_CONFIG[self.name]
-        formatter = _get_formatter(logger_info)
-
-        for handler_info in logger_info.get("handlers", []):
-            self._add_handler(handler_info, formatter)
-
-    def _add_handler(self, handler_info, formatter):
-        handler_class = handler_info["class"]
-        if handler_class == "logging.FileHandler":
-            handler = logging.FileHandler(filename=handler_info["filename"], mode=handler_info.get(
-                "mode", "w"))
-        elif handler_class == "logging.NullHandler":
-            handler = logging.NullHandler()
-        elif handler_class == "logging.StreamHandler":
-            handler = logging.StreamHandler(sys.stdout)
-        elif handler_class == "buildlogger":
-            return  # Buildlogger handlers are applied when creating specific child loggers
-        else:
-            raise ValueError("Unknown handler class '%s'" % handler_class)
-        handler.setFormatter(formatter)
-        self.addHandler(handler)
-
+    return logger
 
 def new_resmoke_logger():
     """Create a child logger of this logger with the name "resmoke"."""
@@ -261,8 +242,6 @@ class TestQueueLogger(logging.Logger):
         logging.Logger.__init__(self, name=test_kind)
         self.parent = TESTS_LOGGER
 
-
-
 class HookLogger(logging.Logger):
     """HookLogger class."""
 
@@ -280,8 +259,23 @@ class HookLogger(logging.Logger):
         self.test_case_logger = logging.Logger(name)
         self.test_case_logger.parent = TESTS_LOGGER
 
-
 # Util methods
+
+def _add_handler(logger, handler_info, formatter):
+    handler_class = handler_info["class"]
+    if handler_class == "logging.FileHandler":
+        handler = logging.FileHandler(filename=handler_info["filename"], mode=handler_info.get(
+            "mode", "w"))
+    elif handler_class == "logging.NullHandler":
+        handler = logging.NullHandler()
+    elif handler_class == "logging.StreamHandler":
+        handler = logging.StreamHandler(sys.stdout)
+    elif handler_class == "buildlogger":
+        return  # Buildlogger handlers are applied when creating specific child loggers
+    else:
+        raise ValueError("Unknown handler class '%s'" % handler_class)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 def _fallback_buildlogger_handler(include_logger_name=True):
     """Return a handler that writes to stderr."""
