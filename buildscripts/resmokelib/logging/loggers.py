@@ -6,6 +6,7 @@ import sys
 from . import buildlogger
 from . import formatters
 from .. import errors
+from .. import config
 
 _DEFAULT_FORMAT = "[%(name)s] %(message)s"
 
@@ -19,22 +20,21 @@ EXECUTOR_LOGGER = None
 FIXTURE_LOGGER = None
 TESTS_LOGGER = None
 
-
-def _build_logger_server(logging_config):
+def _build_logger_server():
     """Create and return a new BuildloggerServer.
 
     This occurs if "buildlogger" is configured as one of the handler class in the configuration,
     return None otherwise.
     """
     for logger_name in (FIXTURE_LOGGER_NAME, TESTS_LOGGER_NAME):
-        logger_info = logging_config[logger_name]
+        logger_info = config.LOGGING_CONFIG[logger_name]
         for handler_info in logger_info["handlers"]:
             if handler_info["class"] == "buildlogger":
                 return buildlogger.BuildloggerServer()
     return None
 
 
-def configure_loggers(logging_config):
+def configure_loggers():
     """Configure the loggers."""
     buildlogger.BUILDLOGGER_FALLBACK = BaseLogger("buildlogger")
     # The 'buildlogger' prefix is not added to the fallback logger since the prefix of the original
@@ -43,14 +43,14 @@ def configure_loggers(logging_config):
         _fallback_buildlogger_handler(include_logger_name=False))
 
     global BUILDLOGGER_SERVER # pylint: disable=global-statement
-    BUILDLOGGER_SERVER = _build_logger_server(logging_config)
+    BUILDLOGGER_SERVER = _build_logger_server()
 
     global TESTS_LOGGER # pylint: disable=global-statement
-    TESTS_LOGGER = RootLogger(TESTS_LOGGER_NAME, logging_config)
+    TESTS_LOGGER = RootLogger(TESTS_LOGGER_NAME)
     global FIXTURE_LOGGER # pylint: disable=global-statement
-    FIXTURE_LOGGER = RootLogger(FIXTURE_LOGGER_NAME, logging_config)
+    FIXTURE_LOGGER = RootLogger(FIXTURE_LOGGER_NAME)
     global EXECUTOR_LOGGER  # pylint: disable=global-statement
-    EXECUTOR_LOGGER = RootLogger(EXECUTOR_LOGGER_NAME, logging_config)
+    EXECUTOR_LOGGER = RootLogger(EXECUTOR_LOGGER_NAME)
 
 
 class BaseLogger(logging.Logger):
@@ -60,45 +60,32 @@ class BaseLogger(logging.Logger):
     to create other loggers.
     """
 
-    def __init__(self, name, logging_config=None, parent=None):
+    def __init__(self, name, parent=None):
         """Initialize a BaseLogger.
 
         :param name: the logger name.
-        :param logging_config: the logging configuration.
         :param parent: the parent logger.
         """
         logging.Logger.__init__(self, name, level=logging.DEBUG)
-        self._logging_config = logging_config
         if parent:
             self.parent = parent
             self.propagate = True
 
-    @property
-    def logging_config(self):
-        """Get the logging configuration."""
-        if self._logging_config:
-            return self._logging_config
-        elif self.parent:
-            # Fetching the value from parent
-            return getattr(self.parent, "logging_config", None)
-        return None
-
 class RootLogger(BaseLogger):
     """A custom class for top-level loggers (executor, fixture, tests)."""
 
-    def __init__(self, name, logging_config):
+    def __init__(self, name):
         """Initialize a RootLogger.
 
         :param name: the logger name.
-        :param logging_config: the logging configuration.
         """
-        BaseLogger.__init__(self, name, logging_config)
+        BaseLogger.__init__(self, name)
         self._configure()
 
     def _configure(self):
-        if self.name not in self.logging_config:
+        if self.name not in config.LOGGING_CONFIG:
             raise ValueError("Logging configuration should contain the %s component" % self.name)
-        logger_info = self.logging_config[self.name]
+        logger_info = config.LOGGING_CONFIG[self.name]
         formatter = _get_formatter(logger_info)
 
         for handler_info in logger_info.get("handlers", []):
@@ -208,7 +195,7 @@ class TestLogger(BaseLogger):
         self._add_build_logger_handler(build_id, test_id)
 
     def _add_build_logger_handler(self, build_id, test_id):
-        logger_info = self.logging_config[TESTS_LOGGER_NAME]
+        logger_info = config.LOGGING_CONFIG[TESTS_LOGGER_NAME]
         handler_info = _get_buildlogger_handler_info(logger_info)
         if handler_info is not None:
             handler = BUILDLOGGER_SERVER.get_test_handler(build_id, test_id, handler_info)
@@ -236,7 +223,7 @@ class FixtureLogger(BaseLogger):
         self._add_build_logger_handler(build_id)
 
     def _add_build_logger_handler(self, build_id):
-        logger_info = self.logging_config[FIXTURE_LOGGER_NAME]
+        logger_info = config.LOGGING_CONFIG[FIXTURE_LOGGER_NAME]
         handler_info = _get_buildlogger_handler_info(logger_info)
         if handler_info is not None:
             handler = BUILDLOGGER_SERVER.get_global_handler(build_id, handler_info)
