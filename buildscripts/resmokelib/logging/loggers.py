@@ -36,7 +36,7 @@ def _build_logger_server():
 
 def configure_loggers():
     """Configure the loggers."""
-    buildlogger.BUILDLOGGER_FALLBACK = BaseLogger("buildlogger")
+    buildlogger.BUILDLOGGER_FALLBACK = logging.Logger("buildlogger", level=logging.DEBUG)
     # The 'buildlogger' prefix is not added to the fallback logger since the prefix of the original
     # logger will be there as part of the logged message.
     buildlogger.BUILDLOGGER_FALLBACK.addHandler(
@@ -52,26 +52,7 @@ def configure_loggers():
     global EXECUTOR_LOGGER  # pylint: disable=global-statement
     EXECUTOR_LOGGER = RootLogger(EXECUTOR_LOGGER_NAME)
 
-
-class BaseLogger(logging.Logger):
-    """Base class for the custom loggers used in this library.
-
-    Custom loggers share access to the logging configuration and provide methods
-    to create other loggers.
-    """
-
-    def __init__(self, name, parent=None):
-        """Initialize a BaseLogger.
-
-        :param name: the logger name.
-        :param parent: the parent logger.
-        """
-        logging.Logger.__init__(self, name, level=logging.DEBUG)
-        if parent:
-            self.parent = parent
-            self.propagate = True
-
-class RootLogger(BaseLogger):
+class RootLogger(logging.Logger):
     """A custom class for top-level loggers (executor, fixture, tests)."""
 
     def __init__(self, name):
@@ -79,7 +60,7 @@ class RootLogger(BaseLogger):
 
         :param name: the logger name.
         """
-        BaseLogger.__init__(self, name)
+        logging.Logger.__init__(self, name, level=logging.DEBUG)
         self._configure()
 
     def _configure(self):
@@ -110,7 +91,9 @@ class RootLogger(BaseLogger):
 
 def new_resmoke_logger():
     """Create a child logger of this logger with the name "resmoke"."""
-    return BaseLogger("resmoke", parent=EXECUTOR_LOGGER)
+    logger = logging.Logger("resmoke", level=logging.DEBUG)
+    logger.parent = EXECUTOR_LOGGER
+    return logger
 
 def new_job_logger(test_kind, job_num):
     """Create a new child JobLogger."""
@@ -125,7 +108,7 @@ def new_hook_logger(hook_class, fixture_logger):
     return HookLogger(hook_class, fixture_logger)
 
 
-class JobLogger(BaseLogger):
+class JobLogger(logging.Logger):
     """JobLogger class."""
 
     def __init__(self, test_kind, job_num, parent):
@@ -135,7 +118,9 @@ class JobLogger(BaseLogger):
         :param job_num: a job number.
         """
         name = "executor:%s:job%d" % (test_kind, job_num)
-        BaseLogger.__init__(self, name, parent=parent)
+        logging.Logger.__init__(self, name, level=logging.DEBUG)
+
+        self.parent = parent
         self.job_num = job_num
         # TODO: Actually refer to config.
         if BUILDLOGGER_SERVER:
@@ -176,7 +161,7 @@ class JobLogger(BaseLogger):
         return TestLogger(test_shortname, parent)
 
 
-class TestLogger(BaseLogger):
+class TestLogger(logging.Logger):
     """TestLogger class."""
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -190,7 +175,8 @@ class TestLogger(BaseLogger):
         :param url: the build logger URL endpoint for the test.
         """
         name = "%s:%s" % (parent.name, test_name)
-        BaseLogger.__init__(self, name, parent=parent)
+        logging.Logger.__init__(self, name, level=logging.DEBUG)
+        self.parent = parent
         self.url_endpoint = url
         self._add_build_logger_handler(build_id, test_id)
 
@@ -207,7 +193,7 @@ class TestLogger(BaseLogger):
         return BaseLogger("%s:%s" % (test_kind, thread_id), parent=self)
 
 
-class FixtureLogger(BaseLogger):
+class FixtureLogger(logging.Logger):
     """FixtureLogger class."""
 
     def __init__(self, fixture_class, job_num, build_id):
@@ -217,7 +203,10 @@ class FixtureLogger(BaseLogger):
         :param job_num: the number of the job the fixture is running on.
         :param build_id: the build logger build id, if any.
         """
-        BaseLogger.__init__(self, "%s:job%d" % (fixture_class, job_num), parent=FIXTURE_LOGGER)
+        name = "%s:job%d" % (fixture_class, job_num)
+        logging.Logger.__init__(self, name, level=logging.DEBUG)
+
+        self.parent = FIXTURE_LOGGER
         self.fixture_class = fixture_class
         self.job_num = job_num
         self._add_build_logger_handler(build_id)
@@ -235,7 +224,7 @@ class FixtureLogger(BaseLogger):
         return FixtureNodeLogger(self.fixture_class, self.job_num, node_name, self)
 
 
-class FixtureNodeLogger(BaseLogger):
+class FixtureNodeLogger(logging.Logger):
     """FixtureNodeLogger class."""
 
     def __init__(self, fixture_class, job_num, node_name, fixture_logger):
@@ -246,8 +235,10 @@ class FixtureNodeLogger(BaseLogger):
         :param node_name: the node display name.
         :param fixture_logger: the parent fixture logger.
         """
-        BaseLogger.__init__(self, "%s:job%d:%s" % (fixture_class, job_num, node_name),
-                            parent=fixture_logger)
+        name = "%s:job%d:%s" % (fixture_class, job_num, node_name)
+        logging.Logger.__init__(self, name, level=logging.DEBUG)
+
+        self.parent = fixture_logger
         self.fixture_class = fixture_class
         self.job_num = job_num
         self.node_name = node_name
@@ -257,7 +248,7 @@ class FixtureNodeLogger(BaseLogger):
         return FixtureNodeLogger(self.fixture_class, self.job_num,
                                  "%s:%s" % (self.node_name, node_name), self)
 
-class TestQueueLogger(BaseLogger):
+class TestQueueLogger(logging.Logger):
     """TestQueueLogger class."""
 
     def __init__(self, test_kind):
@@ -265,10 +256,12 @@ class TestQueueLogger(BaseLogger):
 
         :param test_kind: the test kind (e.g. js_test, db_test, cpp_unit_test, etc.).
         """
-        BaseLogger.__init__(self, test_kind, parent=TESTS_LOGGER)
+        logging.Logger.__init__(self, name=test_kind, level=logging.DEBUG)
+        self.parent = TESTS_LOGGER
 
 
-class HookLogger(BaseLogger):
+
+class HookLogger(logging.Logger):
     """HookLogger class."""
 
     def __init__(self, hook_class, fixture_logger):
@@ -278,10 +271,12 @@ class HookLogger(BaseLogger):
         :param fixture_logger: the logger for the fixtures logs.
         :param tests_root_logger: the root logger for the tests logs.
         """
-        logger_name = "{}:job{:d}".format(hook_class, fixture_logger.job_num)
-        BaseLogger.__init__(self, logger_name, parent=fixture_logger)
+        name = "{}:job{:d}".format(hook_class, fixture_logger.job_num)
+        logging.Logger.__init__(self, name, level=logging.DEBUG)
+        self.parent = fixture_logger
 
-        self.test_case_logger = BaseLogger(logger_name, parent=TESTS_LOGGER)
+        self.test_case_logger = logging.Logger(name, level=logging.DEBUG)
+        self.test_case_logger.parent = TESTS_LOGGER
 
 
 # Util methods
