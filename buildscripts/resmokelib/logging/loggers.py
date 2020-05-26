@@ -20,6 +20,7 @@ EXECUTOR_LOGGER = None
 FIXTURE_LOGGER = None
 TESTS_LOGGER = None
 
+
 def _build_logger_server():
     """Create and return a new BuildloggerServer.
 
@@ -42,19 +43,20 @@ def configure_loggers():
     buildlogger.BUILDLOGGER_FALLBACK.addHandler(
         _fallback_buildlogger_handler(include_logger_name=False))
 
-    global BUILDLOGGER_SERVER # pylint: disable=global-statement
+    global BUILDLOGGER_SERVER  # pylint: disable=global-statement
     BUILDLOGGER_SERVER = _build_logger_server()
 
-    global TESTS_LOGGER # pylint: disable=global-statement
-    TESTS_LOGGER = create_root_logger(TESTS_LOGGER_NAME)
-    global FIXTURE_LOGGER # pylint: disable=global-statement
-    FIXTURE_LOGGER = create_root_logger(FIXTURE_LOGGER_NAME)
+    global TESTS_LOGGER  # pylint: disable=global-statement
+    TESTS_LOGGER = new_root_logger(TESTS_LOGGER_NAME)
+    global FIXTURE_LOGGER  # pylint: disable=global-statement
+    FIXTURE_LOGGER = new_root_logger(FIXTURE_LOGGER_NAME)
     global EXECUTOR_LOGGER  # pylint: disable=global-statement
-    EXECUTOR_LOGGER = create_root_logger(EXECUTOR_LOGGER_NAME)
+    EXECUTOR_LOGGER = new_root_logger(EXECUTOR_LOGGER_NAME)
 
-def create_root_logger(name):
+
+def new_root_logger(name):
     """
-    Creates and configures a new root logger.
+    Create and configure a new root logger.
 
     :param name: The name of the new root logger.
     """
@@ -70,19 +72,23 @@ def create_root_logger(name):
 
     return logger
 
+
 def new_resmoke_logger():
     """Create a child logger of this logger with the name "resmoke"."""
     logger = logging.Logger("resmoke")
     logger.parent = EXECUTOR_LOGGER
     return logger
 
+
 def new_job_logger(test_kind, job_num):
     """Create a new child JobLogger."""
     return JobLogger(test_kind, job_num, EXECUTOR_LOGGER)
 
+
 def new_testqueue_logger(test_kind):
     """Create a new TestQueueLogger that will be a child of the "tests" root logger."""
     return TestQueueLogger(test_kind)
+
 
 def new_hook_logger(hook_class, fixture_logger):
     """Create a new child hook logger."""
@@ -231,6 +237,7 @@ class FixtureNodeLogger(logging.Logger):
         return FixtureNodeLogger(self.fixture_class, self.job_num,
                                  "%s:%s" % (self.node_name, node_name), self)
 
+
 class TestQueueLogger(logging.Logger):
     """TestQueueLogger class."""
 
@@ -241,6 +248,7 @@ class TestQueueLogger(logging.Logger):
         """
         logging.Logger.__init__(self, name=test_kind)
         self.parent = TESTS_LOGGER
+
 
 class HookLogger(logging.Logger):
     """HookLogger class."""
@@ -259,7 +267,9 @@ class HookLogger(logging.Logger):
         self.test_case_logger = logging.Logger(name)
         self.test_case_logger.parent = TESTS_LOGGER
 
+
 # Util methods
+
 
 def _add_handler(logger, handler_info, formatter):
     handler_class = handler_info["class"]
@@ -276,6 +286,7 @@ def _add_handler(logger, handler_info, formatter):
         raise ValueError("Unknown handler class '%s'" % handler_class)
     handler.setFormatter(formatter)
     logger.addHandler(handler)
+
 
 def _fallback_buildlogger_handler(include_logger_name=True):
     """Return a handler that writes to stderr."""
@@ -298,6 +309,7 @@ def _get_buildlogger_handler_info(logger_info):
         if handler_info.pop("class") == "buildlogger":
             return handler_info
     return None
+
 
 def _get_formatter(logger_info):
     """Return formatter."""
