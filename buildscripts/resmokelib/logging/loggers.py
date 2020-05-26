@@ -103,7 +103,7 @@ class JobLogger(logging.Logger):
 
         self.parent = parent
         self.job_num = job_num
-        # TODO: Actually refer to config.
+
         if BUILDLOGGER_SERVER:
             # If we're configured to log messages to the buildlogger server, then request a new
             # build_id for this job.
