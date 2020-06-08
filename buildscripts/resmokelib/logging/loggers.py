@@ -25,6 +25,7 @@ EXECUTOR_LOGGER = None
 FIXTURE_LOGGER = None
 TESTS_LOGGER = None
 
+REGISTRY = {}
 
 def _build_logger_server():
     """Create and return a new BuildloggerServer.
@@ -85,11 +86,55 @@ def new_resmoke_logger():
     logger.parent = EXECUTOR_LOGGER
     return logger
 
-
 def new_job_logger(test_kind, job_num):
     """Create a new child JobLogger."""
-    return JobLogger(test_kind, job_num, EXECUTOR_LOGGER)
 
+    name = "executor:%s:job%d" % (test_kind, job_num)
+    logger = logging.Logger(name)
+    logger.parent = EXECUTOR_LOGGER
+
+    # TODO: Maybe do this in-place when needed rather than when the job logger is constructed.
+    if BUILDLOGGER_SERVER:
+        # If we're configured to log messages to the buildlogger server, then request a new
+        # build_id for this job.
+        build_id = BUILDLOGGER_SERVER.new_build_id("job%d" % job_num)
+        if not build_id:
+            buildlogger.set_log_output_incomplete()
+            raise errors.LoggerRuntimeConfigError(
+                "Encountered an error configuring buildlogger for job #{:d}: Failed to get a"
+                " new build_id".format(job_num))
+
+        url = BUILDLOGGER_SERVER.get_build_log_url(build_id)
+        EXECUTOR_LOGGER.info("Writing output of job #%d to %s.", job_num, url)
+    else:
+        build_id = None
+
+    REGISTRY[job_num] = build_id
+
+    return logger
+
+def new_fixture_logger(fixture_class, job_num):
+    """Create a new fixture logger that will be a child of the "fixture" root logger."""
+    return FixtureLogger(fixture_class, job_num, REGISTRY[job_num])
+
+def new_test_logger(test_shortname, test_basename, command, parent, job_num, job_logger):
+    """Create a new test logger that will be a child of the given parent."""
+    build_id = REGISTRY[job_num]
+    if build_id:
+        # If we're configured to log messages to the buildlogger server, then request a new
+        # test_id for this test.
+        test_id = BUILDLOGGER_SERVER.new_test_id(build_id, test_basename, command)
+        if not test_id:
+            buildlogger.set_log_output_incomplete()
+            raise errors.LoggerRuntimeConfigError(
+                "Encountered an error configuring buildlogger for test {}: Failed to get a new"
+                " test_id".format(test_basename))
+
+        url = BUILDLOGGER_SERVER.get_test_log_url(build_id, test_id)
+        job_logger.info("Writing output of %s to %s.", test_basename, url)
+        return TestLogger(test_shortname, parent, build_id, test_id, url)
+
+    return TestLogger(test_shortname, parent)
 
 def new_testqueue_logger(test_kind):
     """Create a new TestQueueLogger that will be a child of the "tests" root logger."""
@@ -99,60 +144,6 @@ def new_testqueue_logger(test_kind):
 def new_hook_logger(hook_class, fixture_logger):
     """Create a new child hook logger."""
     return HookLogger(hook_class, fixture_logger)
-
-
-class JobLogger(logging.Logger):
-    """JobLogger class."""
-
-    def __init__(self, test_kind, job_num, parent):
-        """Initialize a JobLogger.
-
-        :param test_kind: the test kind (e.g. js_test, db_test, etc.).
-        :param job_num: a job number.
-        """
-        name = "executor:%s:job%d" % (test_kind, job_num)
-        logging.Logger.__init__(self, name)
-
-        self.parent = parent
-        self.job_num = job_num
-
-        if BUILDLOGGER_SERVER:
-            # If we're configured to log messages to the buildlogger server, then request a new
-            # build_id for this job.
-            self.build_id = BUILDLOGGER_SERVER.new_build_id("job%d" % job_num)
-            if not self.build_id:
-                buildlogger.set_log_output_incomplete()
-                raise errors.LoggerRuntimeConfigError(
-                    "Encountered an error configuring buildlogger for job #{:d}: Failed to get a"
-                    " new build_id".format(job_num))
-
-            url = BUILDLOGGER_SERVER.get_build_log_url(self.build_id)
-            parent.info("Writing output of job #%d to %s.", job_num, url)
-        else:
-            self.build_id = None
-
-    def new_fixture_logger(self, fixture_class):
-        """Create a new fixture logger that will be a child of the "fixture" root logger."""
-        return FixtureLogger(fixture_class, self.job_num, self.build_id)
-
-    def new_test_logger(self, test_shortname, test_basename, command, parent):
-        """Create a new test logger that will be a child of the given parent."""
-        if self.build_id:
-            # If we're configured to log messages to the buildlogger server, then request a new
-            # test_id for this test.
-            test_id = BUILDLOGGER_SERVER.new_test_id(self.build_id, test_basename, command)
-            if not test_id:
-                buildlogger.set_log_output_incomplete()
-                raise errors.LoggerRuntimeConfigError(
-                    "Encountered an error configuring buildlogger for test {}: Failed to get a new"
-                    " test_id".format(test_basename))
-
-            url = BUILDLOGGER_SERVER.get_test_log_url(self.build_id, test_id)
-            self.info("Writing output of %s to %s.", test_basename, url)
-            return TestLogger(test_shortname, parent, self.build_id, test_id, url)
-
-        return TestLogger(test_shortname, parent)
-
 
 class TestLogger(logging.Logger):
     """TestLogger class."""

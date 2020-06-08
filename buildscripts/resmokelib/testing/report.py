@@ -16,12 +16,19 @@ from .. import logging
 class TestReport(unittest.TestResult):  # pylint: disable=too-many-instance-attributes
     """Record test status and timing information."""
 
-    def __init__(self, job_logger, suite_options):
-        """Initialize the TestReport with the buildlogger configuration."""
+    def __init__(self, job_logger, suite_options, job_num=None):
+        """
+        Initialize the TestReport with the buildlogger configuration.
+
+        :param job_logger: The higher-level logger that will be used to print metadata about the test.
+        :param suite_options: Options for the suite being executed.
+        :param job_num: The number corresponding to the job this test runs in.
+        """
 
         unittest.TestResult.__init__(self)
 
         self.job_logger = job_logger
+        self.job_num = job_num
         self.suite_options = suite_options
 
         self._lock = threading.Lock()
@@ -107,8 +114,8 @@ class TestReport(unittest.TestResult):  # pylint: disable=too-many-instance-attr
                 self.num_dynamic += 1
 
         # Set up the test-specific logger.
-        test_logger = self.job_logger.new_test_logger(test.short_name(), test.basename(), command,
-                                                      test.logger)
+        test_logger = logging.loggers.new_test_logger(test.short_name(), test.basename(), command,
+                                                      test.logger, self.job_num, self.job_logger)
         test_info.url_endpoint = test_logger.url_endpoint
 
         test.override_logger(test_logger)
