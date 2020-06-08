@@ -50,7 +50,7 @@ class BackgroundInitialSync(interface.Hook):
         self.tests_run += 1
 
         hook_test_case = BackgroundInitialSyncTestCase.create_after_test(
-            self.logger.test_case_logger, test, self, self._shell_options)
+            self.logger, test, self, self._shell_options)
         hook_test_case.configure(self.fixture)
         hook_test_case.run_dynamic_test(test_report)
 
@@ -172,7 +172,7 @@ class IntermediateInitialSync(interface.Hook):
             return
 
         hook_test_case = IntermediateInitialSyncTestCase.create_after_test(
-            self.logger.test_case_logger, test, self)
+            self.logger, test, self)
         hook_test_case.configure(self.fixture)
         hook_test_case.run_dynamic_test(test_report)
 

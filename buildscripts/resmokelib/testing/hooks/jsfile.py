@@ -32,7 +32,7 @@ class JSHook(interface.Hook):
             return
 
         hook_test_case = DynamicJSTestCase.create_after_test(
-            self.logger.test_case_logger, test, self, self._js_filename, self._shell_options)
+            self.logger, test, self, self._js_filename, self._shell_options)
         hook_test_case.configure(self.fixture)
         hook_test_case.run_dynamic_test(test_report)
 

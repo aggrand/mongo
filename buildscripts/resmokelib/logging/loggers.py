@@ -40,7 +40,6 @@ def _build_logger_server():
                 return buildlogger.BuildloggerServer()
     return None
 
-
 def configure_loggers():
     """Configure the loggers."""
     buildlogger.BUILDLOGGER_FALLBACK = logging.Logger("buildlogger")
@@ -58,7 +57,6 @@ def configure_loggers():
     FIXTURE_LOGGER = new_root_logger(FIXTURE_LOGGER_NAME)
     global EXECUTOR_LOGGER  # pylint: disable=global-statement
     EXECUTOR_LOGGER = new_root_logger(EXECUTOR_LOGGER_NAME)
-
 
 def new_root_logger(name):
     """
@@ -78,7 +76,6 @@ def new_root_logger(name):
         _add_handler(logger, handler_info, formatter)
 
     return logger
-
 
 def new_resmoke_logger():
     """Create a child logger of this logger with the name "resmoke"."""
@@ -158,10 +155,6 @@ def new_testqueue_logger(test_kind):
     logger.parent = TESTS_LOGGER
     return logger
 
-def new_hook_logger(hook_class, fixture_logger, job_num):
-    """Create a new child hook logger."""
-    return HookLogger(hook_class, fixture_logger, job_num)
-
 def new_fixture_node_logger(fixture_class, job_num, node_name, fixture_logger):
     """Create a new child FixtureNodeLogger."""
     name = "%s:job%d:%s" % (fixture_class, job_num, node_name)
@@ -169,22 +162,12 @@ def new_fixture_node_logger(fixture_class, job_num, node_name, fixture_logger):
     logger.parent = fixture_logger
     return logger
 
-class HookLogger(logging.Logger):
-    """HookLogger class."""
-
-    def __init__(self, hook_class, fixture_logger, job_num):
-        """Initialize a HookLogger.
-
-        :param hook_class: the hook's name (e.g. CheckReplDBHash, ValidateCollections, etc.).
-        :param fixture_logger: the logger for the fixtures logs.
-        :param tests_root_logger: the root logger for the tests logs.
-        """
-        name = "{}:job{:d}".format(hook_class, job_num)
-        logging.Logger.__init__(self, name)
-        self.parent = fixture_logger
-
-        self.test_case_logger = logging.Logger(name)
-        self.test_case_logger.parent = TESTS_LOGGER
+def new_hook_logger(hook_class, fixture_logger, job_num):
+    """Create a new child hook logger."""
+    name = "{}:job{:d}".format(hook_class, job_num)
+    logger = logging.Logger(name)
+    logger.parent = fixture_logger
+    return logger
 
 
 # Util methods
@@ -219,7 +202,6 @@ def _fallback_buildlogger_handler(include_logger_name=True):
     handler.setFormatter(formatter)
 
     return handler
-
 
 def _get_buildlogger_handler_info(logger_info):
     """Return the buildlogger handler information if it exists, and None otherwise."""
