@@ -12,8 +12,13 @@ _DEFAULT_FORMAT = "[%(name)s] %(message)s"
 
 BUILDLOGGER_SERVER = None
 
+# Executor logger logs information from the testing infrastructure.
 EXECUTOR_LOGGER_NAME = "executor"
+
+# Fixture logger logs information related to fixtures.
 FIXTURE_LOGGER_NAME = "fixture"
+
+# Test logger logs info from actual client-side tests.
 TESTS_LOGGER_NAME = "tests"
 
 EXECUTOR_LOGGER = None
