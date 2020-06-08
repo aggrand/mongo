@@ -65,10 +65,11 @@ def new_root_logger(name):
 
     :param name: The name of the new root logger.
     """
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)
     if name not in config.LOGGING_CONFIG:
         raise ValueError("Logging configuration should contain the %s component" % name)
+
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
     logger_info = config.LOGGING_CONFIG[name]
     formatter = _get_formatter(logger_info)
 
