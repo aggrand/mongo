@@ -119,6 +119,8 @@ def new_fixture_logger(fixture_class, job_num):
 
 def new_test_logger(test_shortname, test_basename, command, parent, job_num, job_logger):
     """Create a new test logger that will be a child of the given parent."""
+    test_id = None
+    url = None
     build_id = REGISTRY[job_num]
     if build_id:
         # If we're configured to log messages to the buildlogger server, then request a new
@@ -132,9 +134,19 @@ def new_test_logger(test_shortname, test_basename, command, parent, job_num, job
 
         url = BUILDLOGGER_SERVER.get_test_log_url(build_id, test_id)
         job_logger.info("Writing output of %s to %s.", test_basename, url)
-        return TestLogger(test_shortname, parent, build_id, test_id, url)
 
-    return TestLogger(test_shortname, parent)
+    name = "%s:%s" % (parent.name, test_shortname)
+    logger = logging.Logger(name)
+    logger.parent = parent
+    _add_build_logger_handler(logger, build_id, test_id)
+
+    return (logger, url)
+
+def new_test_thread_logger(parent, test_kind, thread_id):
+    """Create a new child test thread logger."""
+    logger = logging.Logger("%s:%s" % (test_kind, thread_id))
+    logger.parent = parent
+    return logger
 
 def new_testqueue_logger(test_kind):
     """Create a new TestQueueLogger that will be a child of the "tests" root logger."""
@@ -146,40 +158,6 @@ def new_testqueue_logger(test_kind):
 def new_hook_logger(hook_class, fixture_logger):
     """Create a new child hook logger."""
     return HookLogger(hook_class, fixture_logger)
-
-class TestLogger(logging.Logger):
-    """TestLogger class."""
-
-    def __init__(  # pylint: disable=too-many-arguments
-            self, test_name, parent, build_id=None, test_id=None, url=None):
-        """Initialize a TestLogger.
-
-        :param test_name: the test name.
-        :param parent: the parent logger.
-        :param build_id: the build logger build id.
-        :param test_id: the build logger test id.
-        :param url: the build logger URL endpoint for the test.
-        """
-        name = "%s:%s" % (parent.name, test_name)
-        logging.Logger.__init__(self, name)
-        self.parent = parent
-        self.url_endpoint = url
-        self._add_build_logger_handler(build_id, test_id)
-
-    def _add_build_logger_handler(self, build_id, test_id):
-        logger_info = config.LOGGING_CONFIG[TESTS_LOGGER_NAME]
-        handler_info = _get_buildlogger_handler_info(logger_info)
-        if handler_info is not None:
-            handler = BUILDLOGGER_SERVER.get_test_handler(build_id, test_id, handler_info)
-            handler.setFormatter(_get_formatter(logger_info))
-            self.addHandler(handler)
-
-    def new_test_thread_logger(self, test_kind, thread_id):
-        """Create a new child test thread logger."""
-        logger = logging.Logger("%s:%s" % (test_kind, thread_id))
-        logger.parent = self
-        return logger
-
 
 class FixtureLogger(logging.Logger):
     """FixtureLogger class."""
@@ -296,6 +274,14 @@ def _get_buildlogger_handler_info(logger_info):
         if handler_info.pop("class") == "buildlogger":
             return handler_info
     return None
+
+def _add_build_logger_handler(logger, build_id, test_id):
+    logger_info = config.LOGGING_CONFIG[TESTS_LOGGER_NAME]
+    handler_info = _get_buildlogger_handler_info(logger_info)
+    if handler_info is not None:
+        handler = BUILDLOGGER_SERVER.get_test_handler(build_id, test_id, handler_info)
+        handler.setFormatter(_get_formatter(logger_info))
+        logger.addHandler(handler)
 
 
 def _get_formatter(logger_info):
