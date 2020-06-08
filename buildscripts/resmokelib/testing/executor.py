@@ -247,7 +247,7 @@ class TestSuiteExecutor(object):  # pylint: disable=too-many-instance-attributes
 
         return fixtures.make_fixture(fixture_class, fixture_logger, job_num, **fixture_config)
 
-    def _make_hooks(self, fixture):
+    def _make_hooks(self, fixture, job_num):
         """Create the hooks for the job's fixture."""
 
         hooks = []
@@ -256,7 +256,7 @@ class TestSuiteExecutor(object):  # pylint: disable=too-many-instance-attributes
             hook_config = hook_config.copy()
             hook_class = hook_config.pop("class")
 
-            hook_logger = logging.loggers.new_hook_logger(hook_class, fixture.logger)
+            hook_logger = logging.loggers.new_hook_logger(hook_class, fixture.logger, job_num)
             hook = _hooks.make_hook(hook_class, hook_logger, fixture, **hook_config)
             hooks.append(hook)
 
@@ -272,7 +272,7 @@ class TestSuiteExecutor(object):  # pylint: disable=too-many-instance-attributes
         job_logger = logging.loggers.new_job_logger(self._suite.test_kind, job_num)
 
         fixture = self._make_fixture(job_num)
-        hooks = self._make_hooks(fixture)
+        hooks = self._make_hooks(fixture, job_num)
 
         report = _report.TestReport(job_logger, self._suite.options, job_num)
 

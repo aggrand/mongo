@@ -115,7 +115,12 @@ def new_job_logger(test_kind, job_num):
 
 def new_fixture_logger(fixture_class, job_num):
     """Create a new fixture logger that will be a child of the "fixture" root logger."""
-    return FixtureLogger(fixture_class, job_num, REGISTRY[job_num])
+    name = "%s:job%d" % (fixture_class, job_num)
+    logger = logging.Logger(name)
+    logger.parent = FIXTURE_LOGGER
+    _add_build_logger_handler(logger, REGISTRY[job_num])
+
+    return logger
 
 def new_test_logger(test_shortname, test_basename, command, parent, job_num, job_logger):
     """Create a new test logger that will be a child of the given parent."""
@@ -139,7 +144,6 @@ def new_test_logger(test_shortname, test_basename, command, parent, job_num, job
     logger = logging.Logger(name)
     logger.parent = parent
     _add_build_logger_handler(logger, build_id, test_id)
-
     return (logger, url)
 
 def new_test_thread_logger(parent, test_kind, thread_id):
@@ -152,43 +156,15 @@ def new_testqueue_logger(test_kind):
     """Create a new TestQueueLogger that will be a child of the "tests" root logger."""
     logger = logging.Logger(name=test_kind)
     logger.parent = TESTS_LOGGER
-
     return logger
 
-def new_hook_logger(hook_class, fixture_logger):
+def new_hook_logger(hook_class, fixture_logger, job_num):
     """Create a new child hook logger."""
-    return HookLogger(hook_class, fixture_logger)
+    return HookLogger(hook_class, fixture_logger, job_num)
 
-class FixtureLogger(logging.Logger):
-    """FixtureLogger class."""
-
-    def __init__(self, fixture_class, job_num, build_id):
-        """Initialize a FixtureLogger.
-
-        :param fixture_class: the name of the fixture class.
-        :param job_num: the number of the job the fixture is running on.
-        :param build_id: the build logger build id, if any.
-        """
-        name = "%s:job%d" % (fixture_class, job_num)
-        logging.Logger.__init__(self, name)
-
-        self.parent = FIXTURE_LOGGER
-        self.fixture_class = fixture_class
-        self.job_num = job_num
-        self._add_build_logger_handler(build_id)
-
-    def _add_build_logger_handler(self, build_id):
-        logger_info = config.LOGGING_CONFIG[FIXTURE_LOGGER_NAME]
-        handler_info = _get_buildlogger_handler_info(logger_info)
-        if handler_info is not None:
-            handler = BUILDLOGGER_SERVER.get_global_handler(build_id, handler_info)
-            handler.setFormatter(_get_formatter(logger_info))
-            self.addHandler(handler)
-
-    def new_fixture_node_logger(self, node_name):
-        """Create a new child FixtureNodeLogger."""
-        return FixtureNodeLogger(self.fixture_class, self.job_num, node_name, self)
-
+def new_fixture_node_logger(fixture_class, job_num, node_name, fixture_logger):
+    """Create a new child FixtureNodeLogger."""
+    return FixtureNodeLogger(fixture_class, job_num, node_name, fixture_logger)
 
 class FixtureNodeLogger(logging.Logger):
     """FixtureNodeLogger class."""
@@ -209,23 +185,18 @@ class FixtureNodeLogger(logging.Logger):
         self.job_num = job_num
         self.node_name = node_name
 
-    def new_fixture_node_logger(self, node_name):
-        """Create a new child FixtureNodeLogger."""
-        return FixtureNodeLogger(self.fixture_class, self.job_num,
-                                 "%s:%s" % (self.node_name, node_name), self)
-
 
 class HookLogger(logging.Logger):
     """HookLogger class."""
 
-    def __init__(self, hook_class, fixture_logger):
+    def __init__(self, hook_class, fixture_logger, job_num):
         """Initialize a HookLogger.
 
         :param hook_class: the hook's name (e.g. CheckReplDBHash, ValidateCollections, etc.).
         :param fixture_logger: the logger for the fixtures logs.
         :param tests_root_logger: the root logger for the tests logs.
         """
-        name = "{}:job{:d}".format(hook_class, fixture_logger.job_num)
+        name = "{}:job{:d}".format(hook_class, job_num)
         logging.Logger.__init__(self, name)
         self.parent = fixture_logger
 
@@ -275,14 +246,16 @@ def _get_buildlogger_handler_info(logger_info):
             return handler_info
     return None
 
-def _add_build_logger_handler(logger, build_id, test_id):
+def _add_build_logger_handler(logger, build_id, test_id=None):
     logger_info = config.LOGGING_CONFIG[TESTS_LOGGER_NAME]
     handler_info = _get_buildlogger_handler_info(logger_info)
     if handler_info is not None:
-        handler = BUILDLOGGER_SERVER.get_test_handler(build_id, test_id, handler_info)
+        if test_id is not None:
+            handler = BUILDLOGGER_SERVER.get_test_handler(build_id, test_id, handler_info)
+        else:
+            handler = BUILDLOGGER_SERVER.get_global_handler(build_id, handler_info)
         handler.setFormatter(_get_formatter(logger_info))
         logger.addHandler(handler)
-
 
 def _get_formatter(logger_info):
     """Return formatter."""
