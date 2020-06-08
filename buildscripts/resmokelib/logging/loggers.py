@@ -138,8 +138,10 @@ def new_test_logger(test_shortname, test_basename, command, parent, job_num, job
 
 def new_testqueue_logger(test_kind):
     """Create a new TestQueueLogger that will be a child of the "tests" root logger."""
-    return TestQueueLogger(test_kind)
+    logger = logging.Logger(name=test_kind)
+    logger.parent = TESTS_LOGGER
 
+    return logger
 
 def new_hook_logger(hook_class, fixture_logger):
     """Create a new child hook logger."""
@@ -233,18 +235,6 @@ class FixtureNodeLogger(logging.Logger):
         """Create a new child FixtureNodeLogger."""
         return FixtureNodeLogger(self.fixture_class, self.job_num,
                                  "%s:%s" % (self.node_name, node_name), self)
-
-
-class TestQueueLogger(logging.Logger):
-    """TestQueueLogger class."""
-
-    def __init__(self, test_kind):
-        """Initialize a TestQueueLogger.
-
-        :param test_kind: the test kind (e.g. js_test, db_test, cpp_unit_test, etc.).
-        """
-        logging.Logger.__init__(self, name=test_kind)
-        self.parent = TESTS_LOGGER
 
 
 class HookLogger(logging.Logger):
