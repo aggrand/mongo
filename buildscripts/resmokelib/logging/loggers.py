@@ -164,27 +164,10 @@ def new_hook_logger(hook_class, fixture_logger, job_num):
 
 def new_fixture_node_logger(fixture_class, job_num, node_name, fixture_logger):
     """Create a new child FixtureNodeLogger."""
-    return FixtureNodeLogger(fixture_class, job_num, node_name, fixture_logger)
-
-class FixtureNodeLogger(logging.Logger):
-    """FixtureNodeLogger class."""
-
-    def __init__(self, fixture_class, job_num, node_name, fixture_logger):
-        """Initialize a FixtureNodeLogger.
-
-        :param fixture_class: the name of the fixture implementation class.
-        :param job_num: the number of the job the fixture is running on.
-        :param node_name: the node display name.
-        :param fixture_logger: the parent fixture logger.
-        """
-        name = "%s:job%d:%s" % (fixture_class, job_num, node_name)
-        logging.Logger.__init__(self, name)
-
-        self.parent = fixture_logger
-        self.fixture_class = fixture_class
-        self.job_num = job_num
-        self.node_name = node_name
-
+    name = "%s:job%d:%s" % (fixture_class, job_num, node_name)
+    logger = logging.Logger(name)
+    logger.parent = fixture_logger
+    return logger
 
 class HookLogger(logging.Logger):
     """HookLogger class."""
