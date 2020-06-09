@@ -112,7 +112,7 @@ def new_fixture_logger(fixture_class, job_num):
 
 
 def new_fixture_node_logger(fixture_class, job_num, node_name, fixture_logger):
-    """Create a logger for a particular element in a multi-process fixture.."""
+    """Create a logger for a particular element in a multi-process fixture."""
     name = "%s:job%d:%s" % (fixture_class, job_num, node_name)
     logger = logging.Logger(name)
     logger.parent = fixture_logger
