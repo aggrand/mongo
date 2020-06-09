@@ -25,7 +25,7 @@ EXECUTOR_LOGGER = None
 FIXTURE_LOGGER = None
 TESTS_LOGGER = None
 
-REGISTRY = {}
+_REGISTRY: dict = {}
 
 def _build_logger_server():
     """Create and return a new BuildloggerServer.
@@ -89,24 +89,7 @@ def new_job_logger(test_kind, job_num):
     name = "executor:%s:job%d" % (test_kind, job_num)
     logger = logging.Logger(name)
     logger.parent = EXECUTOR_LOGGER
-
-    # TODO: Maybe do this in-place when needed rather than when the job logger is constructed.
-    if BUILDLOGGER_SERVER:
-        # If we're configured to log messages to the buildlogger server, then request a new
-        # build_id for this job.
-        build_id = BUILDLOGGER_SERVER.new_build_id("job%d" % job_num)
-        if not build_id:
-            buildlogger.set_log_output_incomplete()
-            raise errors.LoggerRuntimeConfigError(
-                "Encountered an error configuring buildlogger for job #{:d}: Failed to get a"
-                " new build_id".format(job_num))
-
-        url = BUILDLOGGER_SERVER.get_build_log_url(build_id)
-        EXECUTOR_LOGGER.info("Writing output of job #%d to %s.", job_num, url)
-    else:
-        build_id = None
-
-    REGISTRY[job_num] = build_id
+    _prepare_build_id(job_num)
 
     return logger
 
@@ -115,32 +98,19 @@ def new_fixture_logger(fixture_class, job_num):
     name = "%s:job%d" % (fixture_class, job_num)
     logger = logging.Logger(name)
     logger.parent = FIXTURE_LOGGER
-    _add_build_logger_handler(logger, REGISTRY[job_num])
+    _add_build_logger_handler(logger, job_num)
 
     return logger
 
+#pylint: disable=too-many-arguments
 def new_test_logger(test_shortname, test_basename, command, parent, job_num, job_logger):
     """Create a new test logger that will be a child of the given parent."""
-    test_id = None
-    url = None
-    build_id = REGISTRY[job_num]
-    if build_id:
-        # If we're configured to log messages to the buildlogger server, then request a new
-        # test_id for this test.
-        test_id = BUILDLOGGER_SERVER.new_test_id(build_id, test_basename, command)
-        if not test_id:
-            buildlogger.set_log_output_incomplete()
-            raise errors.LoggerRuntimeConfigError(
-                "Encountered an error configuring buildlogger for test {}: Failed to get a new"
-                " test_id".format(test_basename))
-
-        url = BUILDLOGGER_SERVER.get_test_log_url(build_id, test_id)
-        job_logger.info("Writing output of %s to %s.", test_basename, url)
-
     name = "%s:%s" % (parent.name, test_shortname)
     logger = logging.Logger(name)
     logger.parent = parent
-    _add_build_logger_handler(logger, build_id, test_id)
+
+    (test_id, url) = _get_test_endpoint(job_num, test_basename, command, job_logger)
+    _add_build_logger_handler(logger, job_num, test_id)
     return (logger, url)
 
 def new_test_thread_logger(parent, test_kind, thread_id):
@@ -189,6 +159,26 @@ def _add_handler(logger, handler_info, formatter):
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
+def _get_buildlogger_handler_info(logger_info):
+    """Return the buildlogger handler information if it exists, and None otherwise."""
+    for handler_info in logger_info["handlers"]:
+        handler_info = handler_info.copy()
+        if handler_info.pop("class") == "buildlogger":
+            return handler_info
+    return None
+
+def _add_build_logger_handler(logger, job_num, test_id=None):
+    build_id = _REGISTRY[job_num]
+    logger_info = config.LOGGING_CONFIG[TESTS_LOGGER_NAME]
+    handler_info = _get_buildlogger_handler_info(logger_info)
+    if handler_info is not None:
+        if test_id is not None:
+            handler = BUILDLOGGER_SERVER.get_test_handler(build_id, test_id, handler_info)
+        else:
+            handler = BUILDLOGGER_SERVER.get_global_handler(build_id, handler_info)
+        handler.setFormatter(_get_formatter(logger_info))
+        logger.addHandler(handler)
+
 
 def _fallback_buildlogger_handler(include_logger_name=True):
     """Return a handler that writes to stderr."""
@@ -203,24 +193,43 @@ def _fallback_buildlogger_handler(include_logger_name=True):
 
     return handler
 
-def _get_buildlogger_handler_info(logger_info):
-    """Return the buildlogger handler information if it exists, and None otherwise."""
-    for handler_info in logger_info["handlers"]:
-        handler_info = handler_info.copy()
-        if handler_info.pop("class") == "buildlogger":
-            return handler_info
-    return None
 
-def _add_build_logger_handler(logger, build_id, test_id=None):
-    logger_info = config.LOGGING_CONFIG[TESTS_LOGGER_NAME]
-    handler_info = _get_buildlogger_handler_info(logger_info)
-    if handler_info is not None:
-        if test_id is not None:
-            handler = BUILDLOGGER_SERVER.get_test_handler(build_id, test_id, handler_info)
-        else:
-            handler = BUILDLOGGER_SERVER.get_global_handler(build_id, handler_info)
-        handler.setFormatter(_get_formatter(logger_info))
-        logger.addHandler(handler)
+def _get_test_endpoint(job_num, test_basename, command, meta_logger):
+    test_id = None
+    url = None
+    build_id = _REGISTRY[job_num]
+    if build_id:
+        # If we're configured to log messages to the buildlogger server, then request a new
+        # test_id for this test.
+        test_id = BUILDLOGGER_SERVER.new_test_id(build_id, test_basename, command)
+        if not test_id:
+            buildlogger.set_log_output_incomplete()
+            raise errors.LoggerRuntimeConfigError(
+                "Encountered an error configuring buildlogger for test {}: Failed to get a new"
+                " test_id".format(test_basename))
+
+        url = BUILDLOGGER_SERVER.get_test_log_url(build_id, test_id)
+        meta_logger.info("Writing output of %s to %s.", test_basename, url)
+
+    return (test_id, url)
+
+def _prepare_build_id(job_num):
+    if BUILDLOGGER_SERVER:
+        # If we're configured to log messages to the buildlogger server, then request a new
+        # build_id for this job.
+        build_id = BUILDLOGGER_SERVER.new_build_id("job%d" % job_num)
+        if not build_id:
+            buildlogger.set_log_output_incomplete()
+            raise errors.LoggerRuntimeConfigError(
+                "Encountered an error configuring buildlogger for job #{:d}: Failed to get a"
+                " new build_id".format(job_num))
+
+        url = BUILDLOGGER_SERVER.get_build_log_url(build_id)
+        EXECUTOR_LOGGER.info("Writing output of job #%d to %s.", job_num, url)
+    else:
+        build_id = None
+
+    _REGISTRY[job_num] = build_id
 
 def _get_formatter(logger_info):
     """Return formatter."""
