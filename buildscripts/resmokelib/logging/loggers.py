@@ -78,14 +78,13 @@ def new_root_logger(name):
     return logger
 
 def new_resmoke_logger():
-    """Create a child logger of this logger with the name "resmoke"."""
+    """Create a child logger of the executor logger with the name "resmoke"."""
     logger = logging.Logger("resmoke")
     logger.parent = EXECUTOR_LOGGER
     return logger
 
 def new_job_logger(test_kind, job_num):
-    """Create a new child JobLogger."""
-
+    """Create a new logger for a given job thread."""
     name = "executor:%s:job%d" % (test_kind, job_num)
     logger = logging.Logger(name)
     logger.parent = EXECUTOR_LOGGER
@@ -93,13 +92,32 @@ def new_job_logger(test_kind, job_num):
 
     return logger
 
+
+# Fixture loggers
+
 def new_fixture_logger(fixture_class, job_num):
-    """Create a new fixture logger that will be a child of the "fixture" root logger."""
+    """Create a logger for a particular fixture class."""
     name = "%s:job%d" % (fixture_class, job_num)
     logger = logging.Logger(name)
     logger.parent = FIXTURE_LOGGER
     _add_build_logger_handler(logger, job_num)
 
+    return logger
+
+def new_fixture_node_logger(fixture_class, job_num, node_name, fixture_logger):
+    """Create a logger for a particular element in a multi-process fixture.."""
+    name = "%s:job%d:%s" % (fixture_class, job_num, node_name)
+    logger = logging.Logger(name)
+    logger.parent = fixture_logger
+    return logger
+
+
+# Test loggers
+
+def new_testqueue_logger(test_kind):
+    """Create a new test queue logger that associates the test kind to tests."""
+    logger = logging.Logger(name=test_kind)
+    logger.parent = TESTS_LOGGER
     return logger
 
 #pylint: disable=too-many-arguments
@@ -114,26 +132,13 @@ def new_test_logger(test_shortname, test_basename, command, parent, job_num, job
     return (logger, url)
 
 def new_test_thread_logger(parent, test_kind, thread_id):
-    """Create a new child test thread logger."""
+    """Create a new test thread logger that will be the child of the given parent."""
     logger = logging.Logger("%s:%s" % (test_kind, thread_id))
     logger.parent = parent
     return logger
 
-def new_testqueue_logger(test_kind):
-    """Create a new TestQueueLogger that will be a child of the "tests" root logger."""
-    logger = logging.Logger(name=test_kind)
-    logger.parent = TESTS_LOGGER
-    return logger
-
-def new_fixture_node_logger(fixture_class, job_num, node_name, fixture_logger):
-    """Create a new child FixtureNodeLogger."""
-    name = "%s:job%d:%s" % (fixture_class, job_num, node_name)
-    logger = logging.Logger(name)
-    logger.parent = fixture_logger
-    return logger
-
 def new_hook_logger(hook_class, fixture_logger, job_num):
-    """Create a new child hook logger."""
+    """Create a new hook logger from a given fixture logger."""
     name = "{}:job{:d}".format(hook_class, job_num)
     logger = logging.Logger(name)
     logger.parent = fixture_logger
@@ -144,6 +149,7 @@ def new_hook_logger(hook_class, fixture_logger, job_num):
 
 
 def _add_handler(logger, handler_info, formatter):
+    """Adds non-buildlogger handlers to a logger based on configuration."""
     handler_class = handler_info["class"]
     if handler_class == "logging.FileHandler":
         handler = logging.FileHandler(filename=handler_info["filename"], mode=handler_info.get(
@@ -168,6 +174,7 @@ def _get_buildlogger_handler_info(logger_info):
     return None
 
 def _add_build_logger_handler(logger, job_num, test_id=None):
+    """Adds a new buildlogger handler to a logger"""
     build_id = _REGISTRY[job_num]
     logger_info = config.LOGGING_CONFIG[TESTS_LOGGER_NAME]
     handler_info = _get_buildlogger_handler_info(logger_info)
@@ -193,8 +200,27 @@ def _fallback_buildlogger_handler(include_logger_name=True):
 
     return handler
 
+def _prepare_build_id(job_num):
+    """Prepares the build ID for a given job num."""
+    if BUILDLOGGER_SERVER:
+        # If we're configured to log messages to the buildlogger server, then request a new
+        # build_id for this job.
+        build_id = BUILDLOGGER_SERVER.new_build_id("job%d" % job_num)
+        if not build_id:
+            buildlogger.set_log_output_incomplete()
+            raise errors.LoggerRuntimeConfigError(
+                "Encountered an error configuring buildlogger for job #{:d}: Failed to get a"
+                " new build_id".format(job_num))
+
+        url = BUILDLOGGER_SERVER.get_build_log_url(build_id)
+        EXECUTOR_LOGGER.info("Writing output of job #%d to %s.", job_num, url)
+    else:
+        build_id = None
+
+    _REGISTRY[job_num] = build_id
 
 def _get_test_endpoint(job_num, test_basename, command, meta_logger):
+    """Gets a new test endpoint for the buildlogger server."""
     test_id = None
     url = None
     build_id = _REGISTRY[job_num]
@@ -212,24 +238,6 @@ def _get_test_endpoint(job_num, test_basename, command, meta_logger):
         meta_logger.info("Writing output of %s to %s.", test_basename, url)
 
     return (test_id, url)
-
-def _prepare_build_id(job_num):
-    if BUILDLOGGER_SERVER:
-        # If we're configured to log messages to the buildlogger server, then request a new
-        # build_id for this job.
-        build_id = BUILDLOGGER_SERVER.new_build_id("job%d" % job_num)
-        if not build_id:
-            buildlogger.set_log_output_incomplete()
-            raise errors.LoggerRuntimeConfigError(
-                "Encountered an error configuring buildlogger for job #{:d}: Failed to get a"
-                " new build_id".format(job_num))
-
-        url = BUILDLOGGER_SERVER.get_build_log_url(build_id)
-        EXECUTOR_LOGGER.info("Writing output of job #%d to %s.", job_num, url)
-    else:
-        build_id = None
-
-    _REGISTRY[job_num] = build_id
 
 def _get_formatter(logger_info):
     """Return formatter."""
