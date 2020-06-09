@@ -550,7 +550,8 @@ class ReplicaSetFixture(interface.ReplFixture):  # pylint: disable=too-many-inst
             suffix = str(index - 1) if self.num_nodes > 2 else ""
             node_name = "secondary{}".format(suffix)
 
-        return logging.loggers.new_fixture_node_logger(self.__class__.__name__, self.job_num, node_name, self.logger)
+        return logging.loggers.new_fixture_node_logger(self.__class__.__name__, self.job_num,
+                                                       node_name, self.logger)
 
     def get_internal_connection_string(self):
         """Return the internal connection string."""

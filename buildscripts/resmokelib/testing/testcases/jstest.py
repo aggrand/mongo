@@ -192,7 +192,8 @@ class JSTestCase(interface.ProcessTestCase):
         try:
             # If there are multiple clients, make a new thread for each client.
             for thread_id in range(self.num_clients):
-                logger = logging.loggers.new_test_thread_logger(self.logger, self.test_kind, str(thread_id))
+                logger = logging.loggers.new_test_thread_logger(self.logger, self.test_kind,
+                                                                str(thread_id))
                 test_case = self._create_test_case_for_thread(logger, thread_id)
                 test_cases.append(test_case)
 

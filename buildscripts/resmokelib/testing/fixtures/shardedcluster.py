@@ -244,7 +244,8 @@ class ShardedClusterFixture(interface.Fixture):  # pylint: disable=too-many-inst
     def _new_configsvr(self):
         """Return a replicaset.ReplicaSetFixture configured as the config server."""
 
-        mongod_logger = logging.loggers.new_fixture_node_logger(self.__class__.__name__, self.job_num, "configsvr", self.logger)
+        mongod_logger = logging.loggers.new_fixture_node_logger(
+            self.__class__.__name__, self.job_num, "configsvr", self.logger)
 
         configsvr_options = self.configsvr_options.copy()
 
@@ -271,8 +272,8 @@ class ShardedClusterFixture(interface.Fixture):  # pylint: disable=too-many-inst
     def _new_rs_shard(self, index, num_rs_nodes_per_shard):
         """Return a replicaset.ReplicaSetFixture configured as a shard in a sharded cluster."""
 
-        mongod_logger = logging.loggers.new_fixture_node_logger(self.__class__.__name__, self.job_num,
-                                                                "shard{}".format(index), self.logger)
+        mongod_logger = logging.loggers.new_fixture_node_logger(
+            self.__class__.__name__, self.job_num, "shard{}".format(index), self.logger)
 
         shard_options = self.shard_options.copy()
 
@@ -303,8 +304,8 @@ class ShardedClusterFixture(interface.Fixture):  # pylint: disable=too-many-inst
     def _new_standalone_shard(self, index):
         """Return a standalone.MongoDFixture configured as a shard in a sharded cluster."""
 
-        mongod_logger = logging.loggers.new_fixture_node_logger(self.__class__.__name__, self.job_num,
-                                                                "shard{}".format(index), self.logger)
+        mongod_logger = logging.loggers.new_fixture_node_logger(
+            self.__class__.__name__, self.job_num, "shard{}".format(index), self.logger)
 
         shard_options = self.shard_options.copy()
 
@@ -332,7 +333,8 @@ class ShardedClusterFixture(interface.Fixture):  # pylint: disable=too-many-inst
         else:
             logger_name = "mongos{}".format(index)
 
-        mongos_logger = logging.loggers.new_fixture_node_logger(self.__class__.__name__, self.job_num, logger_name, self.logger)
+        mongos_logger = logging.loggers.new_fixture_node_logger(
+            self.__class__.__name__, self.job_num, logger_name, self.logger)
 
         mongos_options = self.mongos_options.copy()
         mongos_options["configdb"] = self.configsvr.get_internal_connection_string()

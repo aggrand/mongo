@@ -171,8 +171,7 @@ class IntermediateInitialSync(interface.Hook):
         if not self._should_run_after_test():
             return
 
-        hook_test_case = IntermediateInitialSyncTestCase.create_after_test(
-            self.logger, test, self)
+        hook_test_case = IntermediateInitialSyncTestCase.create_after_test(self.logger, test, self)
         hook_test_case.configure(self.fixture)
         hook_test_case.run_dynamic_test(test_report)
 
