@@ -47,7 +47,7 @@ class TestReport(unittest.TestResult):  # pylint: disable=too-many-instance-attr
 
         # TestReports that are used when running tests need a JobLogger but combined reports don't
         # use the logger.
-        combined_report = cls(logging.loggers.EXECUTOR_LOGGER,
+        combined_report = cls(logging.loggers.ROOT_EXECUTOR_LOGGER,
                               _config.SuiteOptions.ALL_INHERITED.resolve())
         combining_time = time.time()
 

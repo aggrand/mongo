@@ -28,11 +28,11 @@ class TestLoggers(unittest.TestCase):
     def test_job_logger(self):
         loggers.BUILDLOGGER_SERVER.new_build_id.return_value = 78
         logger = loggers.new_job_logger("dummy_test_kind", 55)
-        self.assertEqual(loggers._REGISTRY[55], 78)
+        self.assertEqual(loggers._BUILD_ID_REGISTRY[55], 78)
         self.assertEqual(logger.parent, loggers.EXECUTOR_LOGGER)
 
     def test_fixture_logger(self):
-        loggers._REGISTRY[32] = 29
+        loggers._BUILD_ID_REGISTRY[32] = 29
         loggers._get_buildlogger_handler_info.return_value = True
         mock_handler = MagicMock()
         loggers.BUILDLOGGER_SERVER.get_global_handler.return_value = mock_handler
@@ -41,7 +41,8 @@ class TestLoggers(unittest.TestCase):
 
     def test_fixture_node_logger(self):
         mock_fixture_logger = MagicMock()
-        logger = loggers.new_fixture_node_logger("dummy_class", 24, "dummy_node", mock_fixture_logger)
+        loggers._FIXTURE_LOGGER_REGISTRY[24] = mock_fixture_logger
+        logger = loggers.new_fixture_node_logger("dummy_class", 24, "dummy_node")
         self.assertEqual(logger.parent, mock_fixture_logger)
 
     def test_testqueue_logger(self):
@@ -49,7 +50,7 @@ class TestLoggers(unittest.TestCase):
         self.assertEqual(logger.parent, loggers.TESTS_LOGGER)
 
     def test_test_logger(self):
-        loggers._REGISTRY[88] = 47
+        loggers._BUILD_ID_REGISTRY[88] = 47
         loggers._get_buildlogger_handler_info.return_value = True
         mock_handler = MagicMock()
         loggers.BUILDLOGGER_SERVER.get_test_handler.return_value = mock_handler
@@ -57,7 +58,8 @@ class TestLoggers(unittest.TestCase):
         loggers.BUILDLOGGER_SERVER.get_test_log_url.return_value = "dummy_url"
 
         mock_parent = MagicMock()
-        (logger, url) = loggers.new_test_logger("dummy_shortname", "dummy_basename", "dummy_command", mock_parent, 88, MagicMock())
+        (logger, url) = loggers.new_test_logger("dummy_shortname", "dummy_basename",
+                                                "dummy_command", mock_parent, 88, MagicMock())
         self.assertEqual(logger.handlers[0], mock_handler)
         self.assertEqual(logger.parent, mock_parent)
         self.assertEqual(url, "dummy_url")
@@ -67,5 +69,6 @@ class TestLoggers(unittest.TestCase):
         self.assertEqual(logger.parent, "dummy_parent")
 
     def test_hook_logger(self):
-        logger = loggers.new_hook_logger("dummy_class", "dummy_fixture_logger", 22)
+        loggers._FIXTURE_LOGGER_REGISTRY[22] = "dummy_fixture_logger"
+        logger = loggers.new_hook_logger("dummy_class", 22)
         self.assertEqual(logger.parent, "dummy_fixture_logger")

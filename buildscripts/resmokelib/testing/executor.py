@@ -256,7 +256,7 @@ class TestSuiteExecutor(object):  # pylint: disable=too-many-instance-attributes
             hook_config = hook_config.copy()
             hook_class = hook_config.pop("class")
 
-            hook_logger = logging.loggers.new_hook_logger(hook_class, fixture.logger, job_num)
+            hook_logger = logging.loggers.new_hook_logger(hook_class, job_num)
             hook = _hooks.make_hook(hook_class, hook_logger, fixture, **hook_config)
             hooks.append(hook)
 
