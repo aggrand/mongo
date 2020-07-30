@@ -344,7 +344,7 @@ class EvergreenMultiversionConfigGenerator(object):
 
 @click.group()
 def main():
-    """Serve as an entry point for the 'run' and 'generate-exclude-files' commands."""
+    """Serve as an entry point for the 'run' and 'generate-exclude-tags' commands."""
     pass
 
 
@@ -374,7 +374,7 @@ def run_generate_tasks(expansion_file: str, evergreen_config: Optional[str] = No
     config_generator.run()
 
 
-@main.command("generate-exclude-files")
+@main.command("generate-exclude-tags")
 @click.option("--output", type=str, required=True,
               help="The file to write the exclude tags to.")
 @click.option("--task-path-suffix", type=str, required=True,
