@@ -3,7 +3,6 @@
 import os
 import shutil
 import unittest
-import yaml
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 
 from mock import patch, MagicMock
@@ -15,7 +14,7 @@ from buildscripts import evergreen_gen_multiversion_tests as under_test
 from buildscripts.evergreen_generate_resmoke_tasks import read_yaml
 import buildscripts.evergreen_generate_resmoke_tasks as generate_resmoke
 
-# pylint: disable=missing-docstring
+# pylint: disable=missing-docstring, no-self-use
 
 
 class TestRun(unittest.TestCase):
@@ -149,8 +148,12 @@ class TestGenerateExcludeYaml(unittest.TestCase):
 
         expected = {
             'selector': {
-                'js_test': {'jstests/fake_file1.js': ['suite1_backport_required_multiversion',
-                                                      'suite2_backport_required_multiversion']}
+                'js_test': {
+                    'jstests/fake_file1.js': [
+                        'suite1_backport_required_multiversion',
+                        'suite2_backport_required_multiversion'
+                    ]
+                }
             }
         }
 
@@ -196,22 +199,23 @@ class TestGenerateExcludeYaml(unittest.TestCase):
 
         expected = {
             'selector': {
-                'js_test': {'jstests/fake_file1.js': ['suite1_backport_required_multiversion'],
-                            'jstests/fake_file0.js': ['backport_required_multiversion']}
+                'js_test': {
+                    'jstests/fake_file1.js': ['suite1_backport_required_multiversion'],
+                    'jstests/fake_file0.js': ['backport_required_multiversion']
+                }
             }
         }
 
         self.patch_and_run(latest_yaml, last_lts_yaml)
         self.assert_contents(expected)
 
-
     def test_create_yaml_suite1_and_all(self):
         latest_yaml = {
             'all': [{'ticket': 'fake_ticket0', 'test_file': 'jstests/fake_file0.js'},
                     {'ticket': 'fake_ticket4', 'test_file': 'jstests/fake_file4.js'}], 'suites': {
-                'suite1': [{'ticket': 'fake_ticket1', 'test_file': 'jstests/fake_file1.js'},
-                           {'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}]
-            }
+                        'suite1': [{'ticket': 'fake_ticket1', 'test_file': 'jstests/fake_file1.js'},
+                                   {'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}]
+                    }
         }
 
         last_lts_yaml = {
@@ -222,10 +226,15 @@ class TestGenerateExcludeYaml(unittest.TestCase):
 
         expected = {
             'selector': {
-                'js_test': {'jstests/fake_file1.js': ['suite1_backport_required_multiversion'],
-                            'jstests/fake_file4.js': ['backport_required_multiversion']}
+                'js_test': {
+                    'jstests/fake_file1.js': ['suite1_backport_required_multiversion'],
+                    'jstests/fake_file4.js': ['backport_required_multiversion']
+                }
             }
         }
+
+        self.patch_and_run(latest_yaml, last_lts_yaml)
+        self.assert_contents(expected)
 
     # Can delete after backporting the changed yml syntax.
     def test_not_backported(self):
@@ -236,12 +245,16 @@ class TestGenerateExcludeYaml(unittest.TestCase):
             }
         }
 
-        last_lts_yaml = {'suite1': [{'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}]}
+        last_lts_yaml = {
+            'suite1': [{'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}]
+        }
 
         expected = {
             'selector': {
-                'js_test': {'jstests/fake_file0.js': ['backport_required_multiversion'],
-                            'jstests/fake_file3.js': ['suite1_backport_required_multiversion']}
+                'js_test': {
+                    'jstests/fake_file0.js': ['backport_required_multiversion'],
+                    'jstests/fake_file3.js': ['suite1_backport_required_multiversion']
+                }
             }
         }
 
