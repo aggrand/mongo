@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """Generate multiversion tests to run in evergreen in parallel."""
 
-
-
 import datetime
 import logging
 import os
@@ -10,6 +8,7 @@ import re
 import sys
 import tempfile
 from typing import Optional, List, Set
+from collections import defaultdict
 
 from subprocess import check_output
 
@@ -129,12 +128,14 @@ def get_last_lts_yaml(last_lts_commit_hash):
     backports_required_last_lts = generate_resmoke.read_yaml(temp_dir, last_lts_file)
     return backports_required_last_lts
 
+
 #TODO: Remove need for _multiversion_ part
 def _generate_resmoke_args(suite_file: str, mixed_version_config: str, is_sharded: bool, options,
                            burn_in_test: Optional[str]) -> str:
-        return (f"{options.resmoke_args} --suite={suite_file} --mixedBinVersions={mixed_version_config}"
-            f" --excludeWithAnyTags={EXCLUDE_TAGS},{generate_resmoke.remove_gen_suffix(options.task)}_{BACKPORT_REQUIRED_TAG} --tagFile={os.path.join(CONFIG_DIR, EXCLUDE_TAGS_FILE)} --originSuite={options.suite} "
-            f" {get_multiversion_resmoke_args(is_sharded)} {burn_in_test if burn_in_test else ''}")
+    return (
+        f"{options.resmoke_args} --suite={suite_file} --mixedBinVersions={mixed_version_config}"
+        f" --excludeWithAnyTags={EXCLUDE_TAGS},{generate_resmoke.remove_gen_suffix(options.task)}_{BACKPORT_REQUIRED_TAG} --tagFile={os.path.join(CONFIG_DIR, EXCLUDE_TAGS_FILE)} --originSuite={options.suite} "
+        f" {get_multiversion_resmoke_args(is_sharded)} {burn_in_test if burn_in_test else ''}")
 
 
 class EvergreenMultiversionConfigGenerator(object):
@@ -410,7 +411,7 @@ def generate_exclude_yaml(task_path_suffix: str, output: str) -> None:
     change_backported = "all" in backports_required_last_lts.keys()
     if change_backported:
         always_exclude = diff(backports_required_latest["all"], backports_required_last_lts["all"])
-        suites_last_lts = backports_required_last_lts["suites"] or {}
+        suites_last_lts: defaultdict = defaultdict(list, backports_required_last_lts["suites"])
     else:
         always_exclude = backports_required_latest["all"] or []
         suites_last_lts = backports_required_last_lts
@@ -431,7 +432,9 @@ def generate_exclude_yaml(task_path_suffix: str, output: str) -> None:
             tags.add_tag("js_test", test, f"{suite}_{BACKPORT_REQUIRED_TAG}")
 
     LOGGER.info(f"Writing exclude tags to {output}.")
-    tags.write_file(filename=output, preamble="Tag file that specifies exclusions from multiversion suites.")
+    tags.write_file(filename=output,
+                    preamble="Tag file that specifies exclusions from multiversion suites.")
+
 
 if __name__ == '__main__':
     main()  # pylint: disable=no-value-for-parameter

@@ -91,65 +91,74 @@ class TestGenerateExcludeYaml(unittest.TestCase):
             'get_backports_required_last_lts_hash': MagicMock(),
             'get_last_lts_yaml': MagicMock(return_value=last_lts)
         }
-        
-        with patch.multiple('buildscripts.evergreen_gen_multiversion_tests', **mock_multiversion_methods):
-            with patch('buildscripts.evergreen_generate_resmoke_tasks.read_yaml', return_value=latest) as mock_read_yaml:
+
+        with patch.multiple('buildscripts.evergreen_gen_multiversion_tests',
+                            **mock_multiversion_methods):
+            with patch('buildscripts.evergreen_generate_resmoke_tasks.read_yaml',
+                       return_value=latest) as mock_read_yaml:
 
                 output = os.path.join(self._tmpdir.name, under_test.EXCLUDE_TAGS_FILE)
                 runner = CliRunner()
-                result = runner.invoke(under_test.generate_exclude_yaml, [f"--output={output}",
-                                                                          '--task-path-suffix=/data/multiversion'])
+                result = runner.invoke(
+                    under_test.generate_exclude_yaml,
+                    [f"--output={output}", '--task-path-suffix=/data/multiversion'])
 
                 self.assertEqual(result.exit_code, 0, result)
                 print(mock_read_yaml.call_args_list)
                 mock_read_yaml.assert_called_once()
-                mock_multiversion_methods['get_backports_required_last_lts_hash'].assert_called_once()
+                mock_multiversion_methods[
+                    'get_backports_required_last_lts_hash'].assert_called_once()
                 mock_multiversion_methods['get_last_lts_yaml'].assert_called_once()
 
-
     def test_create_yaml_suite1(self):
-        latest_yaml = {'all': 
-                [
-                    {'ticket': 'fake_ticket0', 
-                     'test_file': 'jstests/fake_file1.js'}
-                ],
-                'suites': {
-                    'suite1': 
-                    [
-                        {'ticket': 'fake_ticket1',
-                         'test_file': 'jstests/fake_file1.js'},
-                        {'ticket': 'fake_ticket2',
-                         'test_file': 'jstests/fake_file2.js'}
-                    ]
-                }
+        latest_yaml = {
+            'all': [{'ticket': 'fake_ticket0', 'test_file': 'jstests/fake_file1.js'}], 'suites': {
+                'suite1': [{'ticket': 'fake_ticket1', 'test_file': 'jstests/fake_file1.js'},
+                           {'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}]
             }
+        }
 
-        last_lts_yaml = {'all': 
-                [
-                    {'ticket': 'fake_ticket0', 
-                     'test_file': 'jstests/fake_file1.js'}
-                ],
-                'suites': {
-                    'suite1': 
-                    [
-                        {'ticket': 'fake_ticket2',
-                         'test_file': 'jstests/fake_file2.js'}
-                    ]
-                }
+        last_lts_yaml = {
+            'all': [{'ticket': 'fake_ticket0', 'test_file': 'jstests/fake_file1.js'}], 'suites': {
+                'suite1': [{'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}]
             }
+        }
 
-        expected = {'selector':
-                    {'js_test': {
-                        'jstests/fake_file1.js':
-                        [
-                            'suite1_backport_required_multiversion'
-                        ]
-                    }
-                    }
-                    }
+        expected = {
+            'selector': {
+                'js_test': {'jstests/fake_file1.js': ['suite1_backport_required_multiversion']}
+            }
+        }
 
         self.patch_and_run(latest_yaml, last_lts_yaml)
         self.assert_contents(expected)
+
+    def test_create_yaml_suite1_and_suite2(self):
+        latest_yaml = {
+            'all': [{'ticket': 'fake_ticket0', 'test_file': 'jstests/fake_file1.js'}], 'suites': {
+                'suite1': [{'ticket': 'fake_ticket1', 'test_file': 'jstests/fake_file1.js'},
+                           {'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}],
+                'suite2': [{'ticket': 'fake_ticket1', 'test_file': 'jstests/fake_file1.js'}]
+            }
+        }
+
+        last_lts_yaml = {
+            'all': [{'ticket': 'fake_ticket0', 'test_file': 'jstests/fake_file1.js'}], 'suites': {
+                'suite1': [{'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}]
+            }
+        }
+
+        expected = {
+            'selector': {
+                'js_test': {'jstests/fake_file1.js': ['suite1_backport_required_multiversion',
+                                                      'suite2_backport_required_multiversion']}
+            }
+        }
+
+        self.patch_and_run(latest_yaml, last_lts_yaml)
+        self.assert_contents(expected)
+
+
 
 EXPANSIONS = """task: t
 build_variant: bv

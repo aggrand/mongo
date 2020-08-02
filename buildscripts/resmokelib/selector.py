@@ -337,7 +337,8 @@ class _SelectorConfig(object):
 
     def __init__(  # pylint: disable=too-many-arguments
             self, root=None, roots=None, include_files=None, exclude_files=None, include_tags=None,
-            exclude_tags=None, include_with_any_tags=None, exclude_with_any_tags=None, tag_file=None):
+            exclude_tags=None, include_with_any_tags=None, exclude_with_any_tags=None,
+            tag_file=None):
         """Initialize the _SelectorConfig from the configuration elements.
 
         Args:
@@ -461,11 +462,11 @@ class _JSTestSelectorConfig(_SelectorConfig):
     def __init__(  # pylint: disable=too-many-arguments
             self, roots=None, include_files=None, exclude_files=None, include_with_any_tags=None,
             exclude_with_any_tags=None, include_tags=None, exclude_tags=None, tag_file=None):
-        _SelectorConfig.__init__(self, roots=roots, include_files=include_files,
-                                 exclude_files=exclude_files,
-                                 include_with_any_tags=include_with_any_tags,
-                                 exclude_with_any_tags=exclude_with_any_tags,
-                                 include_tags=include_tags, exclude_tags=exclude_tags, tag_file=tag_file)
+        _SelectorConfig.__init__(
+            self, roots=roots, include_files=include_files, exclude_files=exclude_files,
+            include_with_any_tags=include_with_any_tags,
+            exclude_with_any_tags=exclude_with_any_tags, include_tags=include_tags,
+            exclude_tags=exclude_tags, tag_file=tag_file)
 
 
 class _JSTestSelector(_Selector):
@@ -476,7 +477,8 @@ class _JSTestSelector(_Selector):
         self._tags = self._test_file_explorer.parse_tag_file("js_test", config.TAG_FILE)
 
     def select(self, selector_config):
-        self._tags = self._test_file_explorer.parse_tag_file("js_test", selector_config.tag_file, self._tags)
+        self._tags = self._test_file_explorer.parse_tag_file("js_test", selector_config.tag_file,
+                                                             self._tags)
         return _Selector.select(self, selector_config)
 
     def get_tags(self, test_file):
