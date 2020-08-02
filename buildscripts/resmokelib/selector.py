@@ -122,7 +122,7 @@ class TestFileExplorer(object):
         """
         if tagged_tests is None:
             tagged_tests = collections.defaultdict(list)
-        if tag_file:
+        if tag_file and os.path.exists(tag_file):
             tags_conf = _tags.TagsConfig.from_file(tag_file)
             tagged_roots = tags_conf.get_test_patterns(test_kind)
             for tagged_root in tagged_roots:
