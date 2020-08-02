@@ -6656,6 +6656,18 @@ tasks:
         ${activate_virtualenv}
         $python buildscripts/evergreen_gen_multiversion_tests.py generate-exclude-tags --task-path-suffix=/data/multiversion --output=multiversion_exclude_tags.yml
 
+  - command: s3.put
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_file: multiversion_exclude_tags.yml
+      remote_file: ${project}/${build_variant}/${revision}/exclude_tags/${task_name}-${build_id}.tgz
+      bucket: mciuploads
+      permissions: public-read
+      content_type: atext-plain
+      display_name: Multiversion Exclude Tags - Execution ${execution}
+      optional: true
+
   - func: "run tests"
     vars:
       task_path_suffix: /data/multiversion
