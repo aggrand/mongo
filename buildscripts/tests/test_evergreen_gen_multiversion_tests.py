@@ -104,7 +104,6 @@ class TestGenerateExcludeYaml(unittest.TestCase):
                     [f"--output={output}", '--task-path-suffix=/data/multiversion'])
 
                 self.assertEqual(result.exit_code, 0, result)
-                print(mock_read_yaml.call_args_list)
                 mock_read_yaml.assert_called_once()
                 mock_multiversion_methods[
                     'get_backports_required_last_lts_hash'].assert_called_once()
@@ -112,14 +111,14 @@ class TestGenerateExcludeYaml(unittest.TestCase):
 
     def test_create_yaml_suite1(self):
         latest_yaml = {
-            'all': [{'ticket': 'fake_ticket0', 'test_file': 'jstests/fake_file1.js'}], 'suites': {
+            'all': [{'ticket': 'fake_ticket0', 'test_file': 'jstests/fake_file0.js'}], 'suites': {
                 'suite1': [{'ticket': 'fake_ticket1', 'test_file': 'jstests/fake_file1.js'},
                            {'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}]
             }
         }
 
         last_lts_yaml = {
-            'all': [{'ticket': 'fake_ticket0', 'test_file': 'jstests/fake_file1.js'}], 'suites': {
+            'all': [{'ticket': 'fake_ticket0', 'test_file': 'jstests/fake_file0.js'}], 'suites': {
                 'suite1': [{'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}]
             }
         }
@@ -135,7 +134,7 @@ class TestGenerateExcludeYaml(unittest.TestCase):
 
     def test_create_yaml_suite1_and_suite2(self):
         latest_yaml = {
-            'all': [{'ticket': 'fake_ticket0', 'test_file': 'jstests/fake_file1.js'}], 'suites': {
+            'all': [{'ticket': 'fake_ticket0', 'test_file': 'jstests/fake_file0.js'}], 'suites': {
                 'suite1': [{'ticket': 'fake_ticket1', 'test_file': 'jstests/fake_file1.js'},
                            {'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}],
                 'suite2': [{'ticket': 'fake_ticket1', 'test_file': 'jstests/fake_file1.js'}]
@@ -143,7 +142,7 @@ class TestGenerateExcludeYaml(unittest.TestCase):
         }
 
         last_lts_yaml = {
-            'all': [{'ticket': 'fake_ticket0', 'test_file': 'jstests/fake_file1.js'}], 'suites': {
+            'all': [{'ticket': 'fake_ticket0', 'test_file': 'jstests/fake_file0.js'}], 'suites': {
                 'suite1': [{'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}]
             }
         }
@@ -158,6 +157,96 @@ class TestGenerateExcludeYaml(unittest.TestCase):
         self.patch_and_run(latest_yaml, last_lts_yaml)
         self.assert_contents(expected)
 
+    def test_both_all_are_none(self):
+        latest_yaml = {
+            'all': None, 'suites': {
+                'suite1': [{'ticket': 'fake_ticket1', 'test_file': 'jstests/fake_file1.js'},
+                           {'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}]
+            }
+        }
+
+        last_lts_yaml = {
+            'all': None, 'suites': {
+                'suite1': [{'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}]
+            }
+        }
+
+        expected = {
+            'selector': {
+                'js_test': {'jstests/fake_file1.js': ['suite1_backport_required_multiversion']}
+            }
+        }
+
+        self.patch_and_run(latest_yaml, last_lts_yaml)
+        self.assert_contents(expected)
+
+    def test_old_all_is_none(self):
+        latest_yaml = {
+            'all': [{'ticket': 'fake_ticket0', 'test_file': 'jstests/fake_file0.js'}], 'suites': {
+                'suite1': [{'ticket': 'fake_ticket1', 'test_file': 'jstests/fake_file1.js'},
+                           {'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}]
+            }
+        }
+
+        last_lts_yaml = {
+            'all': None, 'suites': {
+                'suite1': [{'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}]
+            }
+        }
+
+        expected = {
+            'selector': {
+                'js_test': {'jstests/fake_file1.js': ['suite1_backport_required_multiversion'],
+                            'jstests/fake_file0.js': ['backport_required_multiversion']}
+            }
+        }
+
+        self.patch_and_run(latest_yaml, last_lts_yaml)
+        self.assert_contents(expected)
+
+
+    def test_create_yaml_suite1_and_all(self):
+        latest_yaml = {
+            'all': [{'ticket': 'fake_ticket0', 'test_file': 'jstests/fake_file0.js'},
+                    {'ticket': 'fake_ticket4', 'test_file': 'jstests/fake_file4.js'}], 'suites': {
+                'suite1': [{'ticket': 'fake_ticket1', 'test_file': 'jstests/fake_file1.js'},
+                           {'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}]
+            }
+        }
+
+        last_lts_yaml = {
+            'all': [{'ticket': 'fake_ticket0', 'test_file': 'jstests/fake_file0.js'}], 'suites': {
+                'suite1': [{'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}]
+            }
+        }
+
+        expected = {
+            'selector': {
+                'js_test': {'jstests/fake_file1.js': ['suite1_backport_required_multiversion'],
+                            'jstests/fake_file4.js': ['backport_required_multiversion']}
+            }
+        }
+
+    # Can delete after backporting the changed yml syntax.
+    def test_not_backported(self):
+        latest_yaml = {
+            'all': [{'ticket': 'fake_ticket0', 'test_file': 'jstests/fake_file0.js'}], 'suites': {
+                'suite1': [{'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'},
+                           {'ticket': 'fake_ticket3', 'test_file': 'jstests/fake_file3.js'}]
+            }
+        }
+
+        last_lts_yaml = {'suite1': [{'ticket': 'fake_ticket2', 'test_file': 'jstests/fake_file2.js'}]}
+
+        expected = {
+            'selector': {
+                'js_test': {'jstests/fake_file0.js': ['backport_required_multiversion'],
+                            'jstests/fake_file3.js': ['suite1_backport_required_multiversion']}
+            }
+        }
+
+        self.patch_and_run(latest_yaml, last_lts_yaml)
+        self.assert_contents(expected)
 
 
 EXPANSIONS = """task: t
