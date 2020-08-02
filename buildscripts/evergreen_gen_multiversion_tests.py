@@ -52,8 +52,9 @@ BURN_IN_TASK = "burn_in_tests_multiversion"
 MULTIVERSION_CONFIG_KEY = "use_in_multiversion"
 PASSTHROUGH_TAG = "multiversion_passthrough"
 RANDOM_REPLSETS_TAG = "random_multiversion_ds"
-EXCLUDE_TAGS = f"{REQUIRES_FCV_TAG},multiversion_incompatible"
 BACKPORT_REQUIRED_TAG = "backport_required_multiversion"
+EXCLUDE_TAGS = f"{REQUIRES_FCV_TAG},multiversion_incompatible,{BACKPORT_REQUIRED_TAG}"
+EXCLUDE_TAGS_FILE = "multiversion_exclude_tags.yml"
 
 # The directory in which BACKPORTS_REQUIRED_FILE resides.
 ETC_DIR = "etc"
@@ -128,10 +129,11 @@ def get_last_lts_yaml(last_lts_commit_hash):
     backports_required_last_lts = generate_resmoke.read_yaml(temp_dir, last_lts_file)
     return backports_required_last_lts
 
+#TODO: Remove need for _multiversion_ part
 def _generate_resmoke_args(suite_file: str, mixed_version_config: str, is_sharded: bool, options,
                            burn_in_test: Optional[str]) -> str:
-    return (f"{options.resmoke_args} --suite={suite_file} --mixedBinVersions={mixed_version_config}"
-            f" --excludeWithAnyTags={EXCLUDE_TAGS} --originSuite={options.suite} "
+        return (f"{options.resmoke_args} --suite={suite_file} --mixedBinVersions={mixed_version_config}"
+            f" --excludeWithAnyTags={EXCLUDE_TAGS},{generate_resmoke.remove_gen_suffix(options.task)}_{BACKPORT_REQUIRED_TAG} --tagFile={os.path.join(CONFIG_DIR, EXCLUDE_TAGS_FILE)} --originSuite={options.suite} "
             f" {get_multiversion_resmoke_args(is_sharded)} {burn_in_test if burn_in_test else ''}")
 
 
@@ -375,11 +377,11 @@ def run_generate_tasks(expansion_file: str, evergreen_config: Optional[str] = No
 
 
 @main.command("generate-exclude-tags")
-@click.option("--output", type=str, required=True,
-              help="The file to write the exclude tags to.")
 @click.option("--task-path-suffix", type=str, required=True,
               help="The directory in which multiversion binaries are stored.")
-def generate_exclude_yaml(output: str, task_path_suffix: str) -> None:
+@click.option("--output", type=str, default=os.path.join(CONFIG_DIR, EXCLUDE_TAGS_FILE),
+              show_default=True, help="Where to output the generated tags.")
+def generate_exclude_yaml(task_path_suffix: str, output: str) -> None:
     # pylint: disable=too-many-locals
     """
     Create a tag file associating multiversion tests to tags for exclusion.
@@ -428,6 +430,7 @@ def generate_exclude_yaml(output: str, task_path_suffix: str) -> None:
         for test in test_set:
             tags.add_tag("js_test", test, f"{suite}_{BACKPORT_REQUIRED_TAG}")
 
+    LOGGER.info(f"Writing exclude tags to {output}.")
     tags.write_file(filename=output, preamble="Tag file that specifies exclusions from multiversion suites.")
 
 if __name__ == '__main__':
