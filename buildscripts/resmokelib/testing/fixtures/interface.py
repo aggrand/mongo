@@ -114,7 +114,7 @@ class Fixture(object, metaclass=registry.make_registry_metaclass(_FIXTURES)):
         """Return true if the fixture is still operating and more tests and can be run."""
         return True
 
-    def get_node_info(self): # pylint: disable=no-self-use
+    def get_node_info(self):  # pylint: disable=no-self-use
         """Return a list of NodeInfo objects."""
         return []
 
@@ -290,6 +290,7 @@ class FixtureTeardownHandler(object):
         else:
             self._message = "{} - {}".format(self._message, message)
 
+
 def create_fixture_table(fixture):
     """Get fixture node info, make it a pretty table. Return it or None if fixture is invalid target."""
     info: List[NodeInfo] = fixture.get_node_info()
@@ -336,6 +337,7 @@ def create_fixture_table(fixture):
     table += horizontal_separator()
 
     return "Fixture status:\n" + table
+
 
 # Represents a row in a node info table.
 NodeInfo = namedtuple('NodeInfo', ['name', 'port', 'pid'])

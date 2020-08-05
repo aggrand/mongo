@@ -5,7 +5,6 @@ import time
 from collections import namedtuple
 from collections import defaultdict
 
-
 from buildscripts.resmokelib import config
 from buildscripts.resmokelib import errors
 from buildscripts.resmokelib.testing import testcases
@@ -300,6 +299,7 @@ class Job(object):  # pylint: disable=too-many-instance-attributes
             # Multiple threads may be draining the queue simultaneously, so just ignore the
             # exception from the race between queue.empty() being false and failing to get an item.
             pass
+
 
 TestResult = namedtuple('TestResult', ['test', 'hook', 'success'])
 
