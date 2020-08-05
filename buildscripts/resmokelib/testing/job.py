@@ -4,14 +4,14 @@ import sys
 import time
 from collections import namedtuple
 from collections import defaultdict
-from typing import List
+
 
 from buildscripts.resmokelib import config
 from buildscripts.resmokelib import errors
 from buildscripts.resmokelib.testing import testcases
 from buildscripts.resmokelib.testing.hooks import stepdown
 from buildscripts.resmokelib.testing.testcases import fixture as _fixture
-from buildscripts.resmokelib.testing.fixtures.interface import NodeInfo
+from buildscripts.resmokelib.testing.fixtures.interface import create_fixture_table
 from buildscripts.resmokelib.utils import queue as _queue
 
 
@@ -166,8 +166,8 @@ class Job(object):  # pylint: disable=too-many-instance-attributes
         """Call the before/after test hooks and execute 'test'."""
 
         test.configure(self.fixture, config.NUM_CLIENTS_PER_FIXTURE)
-        self._set_logging_prefix()
         self._run_hooks_before_tests(test)
+        self.report.logging_prefix = create_fixture_table(self.fixture)
 
         test(self.report)
         try:
@@ -300,57 +300,6 @@ class Job(object):  # pylint: disable=too-many-instance-attributes
             # Multiple threads may be draining the queue simultaneously, so just ignore the
             # exception from the race between queue.empty() being false and failing to get an item.
             pass
-
-    def _set_logging_prefix(self):
-        """Get fixture node info, make it a pretty table, add it to report."""
-        info: List[NodeInfo] = self.fixture.get_node_info()
-        capture_time = time.strftime('%Y-%m-%dT%H:%M:%SZ')
-        if not info:
-            return
-
-        columns = {}
-        longest = {}
-        for key in NodeInfo._fields:
-            longest[key] = len(key)
-            columns[key] = []
-            for node in info:
-                value = str(getattr(node, key))
-                columns[key].append(value)
-                longest[key] = max(longest[key], len(value))
-
-        def horizontal_separator():
-            row = ""
-            for key in columns:
-                row += "+" + "-" * (longest[key])
-            row += "+\n"
-            return row
-
-        def title_row():
-            row = ""
-            for key in columns:
-                row += "|" + key + " " * (longest[key] - len(key))
-            row += "|\n"
-            return row
-
-        def data_row(i):
-            row = ""
-            for key in columns:
-                row += "|" + columns[key][i] + " " * (longest[key] - len(columns[key][i]))
-            row += "|\n"
-            return row
-
-        table = ""
-        table += horizontal_separator()
-        table += title_row()
-        table += horizontal_separator()
-        for i in range(len(info)):
-            table += data_row(i)
-        table += horizontal_separator()
-
-        # In case a hook changed the state between state capture and test start, include the time.
-        # We capture before running any hooks so background hooks don't make the data partially-valid.
-        self.report.logging_prefix = f"Fixture state captured at {capture_time}:\n{table}"
-
 
 TestResult = namedtuple('TestResult', ['test', 'hook', 'success'])
 
