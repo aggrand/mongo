@@ -4,6 +4,7 @@ import sys
 import time
 from collections import namedtuple
 from collections import defaultdict
+from typing import List
 
 from buildscripts.resmokelib import config
 from buildscripts.resmokelib import errors
@@ -302,7 +303,7 @@ class Job(object):  # pylint: disable=too-many-instance-attributes
 
     def _set_logging_prefix(self):
         """Get fixture node info, make it a pretty table, add it to report."""
-        info = self.fixture.get_node_info()
+        info: List[NodeInfo] = self.fixture.get_node_info()
         capture_time = time.strftime('%Y-%m-%dT%H:%M:%SZ')
         if not info:
             return
