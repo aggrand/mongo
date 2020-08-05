@@ -327,7 +327,7 @@ def create_fixture_table(fixture):
         row += "|"
         return row
 
-    table = "\n"
+    table = ""
     table += horizontal_separator() + "\n"
     table += title_row() + "\n"
     table += horizontal_separator() + "\n"
@@ -335,7 +335,7 @@ def create_fixture_table(fixture):
         table += data_row(i) + "\n"
     table += horizontal_separator()
 
-    return table
+    return "Fixture status:\n" + table
 
 # Represents a row in a node info table.
 NodeInfo = namedtuple('NodeInfo', ['name', 'port', 'pid'])
