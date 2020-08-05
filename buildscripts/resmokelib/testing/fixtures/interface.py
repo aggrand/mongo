@@ -3,6 +3,7 @@
 import os.path
 import time
 from enum import Enum
+from collections import namedtuple
 
 import pymongo
 import pymongo.errors
@@ -113,8 +114,8 @@ class Fixture(object, metaclass=registry.make_registry_metaclass(_FIXTURES)):
         return True
 
     def get_node_info(self): # pylint: disable=no-self-use
-        """Return a list of dicts of node information."""
-        return None
+        """Return a list of NodeInfo objects."""
+        return []
 
     def get_dbpath_prefix(self):
         """Return dbpath prefix."""
@@ -287,3 +288,6 @@ class FixtureTeardownHandler(object):
             self._message = message
         else:
             self._message = "{} - {}".format(self._message, message)
+
+# Represents a row in a node info table.
+NodeInfo = namedtuple('NodeInfo', ['name', 'port', 'pid'])

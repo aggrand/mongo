@@ -637,10 +637,10 @@ class ReplicaSetFixture(interface.ReplFixture):  # pylint: disable=too-many-inst
         return self.replset_name + "/" + ",".join(conn_strs)
 
     def get_node_info(self):
-        """Return a list of dicts of node information."""
+        """Return a list of dicts of NodeInfo objects."""
         output = []
         for node in self.nodes:
-            output.append(node.get_node_info())
+            output += node.get_node_info()
         return output
 
     def get_driver_connection_url(self):
