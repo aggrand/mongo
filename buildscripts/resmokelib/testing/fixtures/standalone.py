@@ -159,6 +159,16 @@ class MongoDFixture(interface.Fixture):
         """Return the _dbpath, as this is the root of the data directory."""
         return self._dbpath
 
+    def get_node_info(self):
+        """Return a list of dicts of all node information."""
+        info = {
+            # The logger name should be an unambiguous node name.
+            "name": self.logger.name,
+            "port": self.port,
+            "pid": self.mongod.pid,
+        }
+        return [info]
+
     def get_internal_connection_string(self):
         """Return the internal connection string."""
         if self.mongod is None:

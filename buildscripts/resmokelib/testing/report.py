@@ -30,7 +30,7 @@ class TestReport(unittest.TestResult):  # pylint: disable=too-many-instance-attr
         self.job_logger = job_logger
         self.job_num = job_num
         self.suite_options = suite_options
-        self.log_prefix = None
+        self.logging_prefix = None
 
         self._lock = threading.Lock()
 
@@ -118,8 +118,8 @@ class TestReport(unittest.TestResult):  # pylint: disable=too-many-instance-attr
         (test_logger, url_endpoint) = logging.loggers.new_test_logger(
             test.short_name(), test.basename(), command, test.logger, self.job_num, self.job_logger)
         test_info.url_endpoint = url_endpoint
-        if self.log_prefix is not None:
-            test_logger.info(self.log_prefix)
+        if self.logging_prefix is not None:
+            test_logger.info(self.logging_prefix)
 
         test.override_logger(test_logger)
         test_info.start_time = time.time()

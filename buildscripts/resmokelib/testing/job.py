@@ -163,6 +163,7 @@ class Job(object):  # pylint: disable=too-many-instance-attributes
         """Call the before/after test hooks and execute 'test'."""
 
         test.configure(self.fixture, config.NUM_CLIENTS_PER_FIXTURE)
+        self._set_logging_prefix()
         self._run_hooks_before_tests(test)
 
         test(self.report)
@@ -296,6 +297,9 @@ class Job(object):  # pylint: disable=too-many-instance-attributes
             # Multiple threads may be draining the queue simultaneously, so just ignore the
             # exception from the race between queue.empty() being false and failing to get an item.
             pass
+
+    def _set_logging_prefix(self):
+        self.report.logging_prefix = "Logging prefix: " + str(self.fixture.get_node_info())
 
 
 TestResult = namedtuple('TestResult', ['test', 'hook', 'success'])

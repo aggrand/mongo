@@ -112,6 +112,10 @@ class Fixture(object, metaclass=registry.make_registry_metaclass(_FIXTURES)):
         """Return true if the fixture is still operating and more tests and can be run."""
         return True
 
+    def get_node_info(self): # pylint: disable=no-self-use
+        """Return a list of dicts of node information."""
+        return None
+
     def get_dbpath_prefix(self):
         """Return dbpath prefix."""
         return self._dbpath_prefix
