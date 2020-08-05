@@ -347,6 +347,7 @@ class Job(object):  # pylint: disable=too-many-instance-attributes
         table += horizontal_separator()
 
         # In case a hook changed the state between state capture and test start, include the time.
+        # We capture before running any hooks so background hooks don't make the data partially-valid.
         self.report.logging_prefix = f"Fixture state captured at {capture_time}:\n{table}"
 
 
