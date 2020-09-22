@@ -79,7 +79,7 @@ MongoRunner.dataPath = "/data/db/";
 
 MongoRunner.mongodPath = "mongod";
 MongoRunner.mongosPath = "mongos";
-MongoRunner.mongoShellPath = "mongo";
+MongoRunner.mongoShellPath = "bin/mongo";
 
 MongoRunner.VersionSub = function(pattern, version) {
     this.pattern = pattern;

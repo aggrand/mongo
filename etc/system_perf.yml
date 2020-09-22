@@ -501,6 +501,13 @@ tasks:
       vars:
         test_control: "linkbench_stepdowns"
 
+- name: mixed_workloads_genny_rolling_restarts
+  priority: 5
+  commands:
+    - func: f_run_dsi_workload
+      vars:
+        test_control: "mixed_workloads_genny_rolling_restarts"
+
 - name: linkbench_rolling_restarts
   priority: 5
   commands:
@@ -575,6 +582,7 @@ tasks:
 
 - name: industry_benchmarks_rolling_restarts
   priority: 5
+  exec_timeout_secs: 43200 # 12 hours
   commands:
     - func: f_run_dsi_workload
       vars:
@@ -1372,6 +1380,7 @@ buildvariants:
   tasks:
     - name: industry_benchmarks_stepdowns
     - name: industry_benchmarks_rolling_restarts
+    - name: mixed_workloads_genny_rolling_restarts
     - name: industry_benchmarks_non_retryable_writes_stepdowns
     - name: industry_benchmarks_non_retryable_writes_rolling_restarts
     - name: linkbench_stepdowns
