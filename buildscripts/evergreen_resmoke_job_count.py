@@ -89,13 +89,13 @@ def determine_factor(task_name, variant, factor):
     return min(factors)
 
 
-def determine_jobs(task_name, variant, jobs_max=0, job_factor=1.0):
+def determine_jobs(task_name, variant, jobs_max=0, job_base_factor=1.0):
     """Determine the resmoke jobs."""
     if jobs_max < 0:
         raise ValueError("The jobs_max must be >= 0.")
-    if job_factor <= 0:
-        raise ValueError("The job_factor must be > 0.")
-    factor = determine_factor(task_name, variant, job_factor)
+    if job_base_factor <= 0:
+        raise ValueError("The job_base_factor must be > 0.")
+    factor = determine_factor(task_name, variant, job_base_factor)
     jobs_available = int(round(CPU_COUNT * factor))
     if jobs_max == 0:
         return max(1, jobs_available)
@@ -121,7 +121,7 @@ def main():
     parser.add_argument("--buildVariant", dest="variant", required=True,
                         help="Build variant task is being executed on.")
     parser.add_argument(
-        "--jobBaseFactor", dest="jobs_factor", type=float, default=1.0,
+        "--jobBaseFactor", dest="jobs_base_factor", type=float, default=1.0,
         help=("Base job factor to use as a mulitplier with the number of CPUs. Defaults"
               " to %(default)s."))
     parser.add_argument(
@@ -141,7 +141,7 @@ def main():
     LOGGER.info("Finding job count", task=options.task, variant=options.variant,
                 platform=PLATFORM_MACHINE, sys=SYS_PLATFORM, cpu_count=CPU_COUNT)
 
-    jobs = determine_jobs(options.task, options.variant, options.jobs_max, options.jobs_factor)
+    jobs = determine_jobs(options.task, options.variant, options.jobs_max, options.jobs_base_factor)
     if jobs < CPU_COUNT:
         print("Reducing number of jobs to run from {} to {}".format(CPU_COUNT, jobs))
     output_jobs(jobs, options.outfile)
