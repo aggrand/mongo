@@ -10058,7 +10058,6 @@ buildvariants:
     jstestfuzz_num_generated_files: 40
     jstestfuzz_concurrent_num_files: 10
     target_resmoke_time: 10
-    resmoke_jobs_final_multiplier: 1.618
     max_sub_suites: 3
     large_distro_name: rhel62-large
   tasks:
@@ -10155,7 +10154,6 @@ buildvariants:
     jstestfuzz_num_generated_files: 40
     jstestfuzz_concurrent_num_files: 10
     target_resmoke_time: 10
-    resmoke_jobs_final_multiplier: 1.618
     max_sub_suites: 5
     large_distro_name: rhel62-large
     burn_in_tag_buildvariants: enterprise-rhel-62-64-bit-majority-read-concern-off enterprise-rhel-62-64-bit-inmem linux-64-duroff enterprise-rhel-62-64-bit-multiversion
@@ -10271,7 +10269,6 @@ buildvariants:
     multiversion_platform: rhel62
     multiversion_edition: enterprise
     repo_edition: enterprise
-    resmoke_jobs_final_multiplier: 1.618
     scons_cache_scope: shared
     large_distro_name: rhel62-large
     test_flags: >-
@@ -10371,7 +10368,6 @@ buildvariants:
     multiversion_platform: rhel62
     multiversion_edition: enterprise
     repo_edition: enterprise
-    resmoke_jobs_final_multiplier: 1.618
     scons_cache_scope: shared
     large_distro_name: rhel62-large
   tasks:
@@ -10449,7 +10445,6 @@ buildvariants:
     multiversion_platform: rhel62
     multiversion_edition: enterprise
     repo_edition: enterprise
-    resmoke_jobs_final_multiplier: 1.618
     scons_cache_scope: shared
     large_distro_name: rhel62-large
   tasks:
@@ -10488,7 +10483,6 @@ buildvariants:
     build_mongoreplay: true
     large_distro_name: rhel62-large
     resmoke_jobs_base_factor: 0.25
-    resmoke_jobs_final_multiplier: 1.618
   tasks:
   - name: compile_all_run_unittests_TG
     distros:
@@ -10517,7 +10511,6 @@ buildvariants:
     multiversion_platform: rhel62
     multiversion_edition: enterprise
     repo_edition: enterprise
-    resmoke_jobs_final_multiplier: 1.618
     scons_cache_scope: shared
     large_distro_name: rhel62-large
   tasks:
@@ -10594,7 +10587,6 @@ buildvariants:
     multiversion_platform: rhel62
     multiversion_edition: enterprise
     repo_edition: enterprise
-    resmoke_jobs_final_multiplier: 1.618
     scons_cache_scope: shared
     build_mongoreplay: false
     large_distro_name: rhel62-large
@@ -10625,7 +10617,6 @@ buildvariants:
     multiversion_platform: rhel62
     multiversion_edition: enterprise
     repo_edition: enterprise
-    resmoke_jobs_final_multiplier: 1.618
     scons_cache_scope: shared
     build_mongoreplay: false
     large_distro_name: rhel62-large
@@ -10656,7 +10647,6 @@ buildvariants:
     multiversion_platform: rhel62
     multiversion_edition: enterprise
     resmoke_jobs_base_factor: 0.5  # Avoid starting too many mongod's
-    resmoke_jobs_final_multiplier: 1.618
     # The gcov instrumentation saves the path the .gcno files were created in as the default path
     # for the .gcda files. In Evergreen the path will start with /data/mci/[Hashed ID]/src/... where
     # the hashed ID is unique per task run. GCOV_PREFIX_STRIP is the number of directory levels to
@@ -11443,7 +11433,8 @@ buildvariants:
   - name: snmp
   - name: .stitch
   - name: .publish
-    distros: - rhel70-small
+    distros:
+    - rhel70-small
 
 
 - name: enterprise-rhel-67-s390x-compile
@@ -12149,7 +12140,6 @@ buildvariants:
   - centos6-perf
   expansions:
     compile_flags: --ssl MONGO_DISTMOD=rhel62 -j$(grep -c ^processor /proc/cpuinfo) --variables-files=etc/scons/mongodbtoolchain_v3_gcc.vars
-    resmoke_jobs_final_multiplier: 1.618
   tasks:
   - name: compile_benchmarks
     distros:
@@ -12170,7 +12160,6 @@ buildvariants:
     compile_flags: --ssl MONGO_DISTMOD=rhel62 -j$(grep -c ^processor /proc/cpuinfo) --variables-files=etc/scons/mongodbtoolchain_v3_gcc.vars
     multiversion_platform: rhel62
     multiversion_edition: enterprise
-    resmoke_jobs_final_multiplier: 1.618
     scons_cache_scope: shared
     large_distro_name: rhel62-large
   tasks:
