@@ -8602,6 +8602,7 @@ buildvariants:
     scons_cache_mode: all
     test_flags: --excludeWithAnyTags=requires_http_client
     target_resmoke_time: 15
+    resmoke_jobs_final_multiplier: 1.618
     max_sub_suites: 5
     num_scons_link_jobs_available: 0.99
   tasks:
@@ -8663,6 +8664,7 @@ buildvariants:
     # does not include replica set tests. Since transactions are only supported on replica sets, we
     # exclude those tests as well.
     test_flags: --nojournal --excludeWithAnyTags=requires_journaling,requires_replication,requires_sharding,uses_transactions,requires_http_client
+    resmoke_jobs_final_multiplier: 1.618
     scons_cache_scope: shared
   tasks:
   - name: compile_all_run_unittests_TG
