@@ -89,14 +89,14 @@ def determine_factor(task_name, variant, factor):
     return min(factors)
 
 
-def determine_jobs(task_name, variant, jobs_max=0, job_base_factor=1.0):
+def determine_jobs(task_name, variant, jobs_max=0, job_base_factor=1.0, jobs_final_multiplier=1.0):
     """Determine the resmoke jobs."""
     if jobs_max < 0:
         raise ValueError("The jobs_max must be >= 0.")
     if job_base_factor <= 0:
         raise ValueError("The job_base_factor must be > 0.")
     factor = determine_factor(task_name, variant, job_base_factor)
-    jobs_available = int(round(CPU_COUNT * factor))
+    jobs_available = int(round(CPU_COUNT * factor * jobs_final_multiplier))
     if jobs_max == 0:
         return max(1, jobs_available)
     return min(jobs_max, jobs_available)
@@ -122,8 +122,12 @@ def main():
                         help="Build variant task is being executed on.")
     parser.add_argument(
         "--jobBaseFactor", dest="jobs_base_factor", type=float, default=1.0,
-        help=("Base job factor to use as a mulitplier with the number of CPUs. Defaults"
-              " to %(default)s."))
+        help=("Base job factor to use as a default mulitplier with the number of CPUs,"
+              " unless overriden with task-specific logic. Defaults to %(default)s."))
+    parser.add_argument(
+        "--jobFinalMultiplier", dest="jobs_final_multiplier", type=float, default=1.0,
+        help=("Final jobs factor that is always used as a multiplier with the number of CPUs,"
+              " in addition to the computed factor. Defaults to %(default)s."))
     parser.add_argument(
         "--jobsMax", dest="jobs_max", type=int, default=0,
         help=("Maximum number of jobs to use. Specify 0 to indicate the number of"
@@ -141,7 +145,7 @@ def main():
     LOGGER.info("Finding job count", task=options.task, variant=options.variant,
                 platform=PLATFORM_MACHINE, sys=SYS_PLATFORM, cpu_count=CPU_COUNT)
 
-    jobs = determine_jobs(options.task, options.variant, options.jobs_max, options.jobs_base_factor)
+    jobs = determine_jobs(options.task, options.variant, options.jobs_max, options.jobs_base_factor, options.jobs_final_multiplier)
     if jobs < CPU_COUNT:
         print("Reducing number of jobs to run from {} to {}".format(CPU_COUNT, jobs))
     output_jobs(jobs, options.outfile)
