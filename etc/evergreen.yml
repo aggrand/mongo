@@ -1032,7 +1032,7 @@ functions:
         $python buildscripts/evergreen_resmoke_job_count.py \
           --taskName ${task_name}                           \
           --buildVariant ${build_variant}                   \
-          --jobBaseFactor ${resmoke_jobs_base_factor|1}              \
+          --jobFactor ${resmoke_jobs_factor|1}              \
           --jobsMax ${resmoke_jobs_max|0}                   \
           --outFile resmoke_jobs_expansion.yml
 
@@ -5088,7 +5088,7 @@ tasks:
   - func: "run tests"
     vars:
       resmoke_args: --suites=aggregation_read_concern_majority_passthrough --storageEngine=wiredTiger
-      resmoke_jobs_base_factor: 0.5
+      resmoke_jobs_factor: 0.5
 
 - name: aggregation_secondary_reads_gen
   tags: ["aggregation", "secondary_reads"]
@@ -8595,7 +8595,7 @@ buildvariants:
   run_on:
   - rhel62-large
   expansions:
-    resmoke_jobs_base_factor: 0.5  # Avoid starting too many mongod's
+    resmoke_jobs_factor: 0.5  # Avoid starting too many mongod's
     compile_flags: --dbg=on --opt=on -j$(grep -c ^processor /proc/cpuinfo) --variables-files=etc/scons/mongodbtoolchain_v3_gcc.vars --enable-free-mon=on --enable-http-client=on --link-model=dynamic
     scons_cache_scope: shared
     scons_cache_mode: all
@@ -8646,7 +8646,7 @@ buildvariants:
   - wtdevelop
   expansions:
     use_wt_develop: true
-    resmoke_jobs_base_factor: 0.5  # Avoid starting too many mongod's
+    resmoke_jobs_factor: 0.5  # Avoid starting too many mongod's
     compile_flags: --dbg=on --opt=on -j$(grep -c ^processor /proc/cpuinfo) --variables-files=etc/scons/mongodbtoolchain_v3_gcc.vars --enable-free-mon=off --enable-http-client=off
     test_flags: --excludeWithAnyTags=requires_http_client
 
@@ -10481,7 +10481,7 @@ buildvariants:
     tooltags: "ssl sasl gssapi"
     build_mongoreplay: true
     large_distro_name: rhel62-large
-    resmoke_jobs_base_factor: 0.25
+    resmoke_jobs_factor: 0.25
   tasks:
   - name: compile_all_run_unittests_TG
     distros:
@@ -10645,7 +10645,7 @@ buildvariants:
     compile_flags: --dbg=on --gcov --ssl MONGO_DISTMOD=rhel62 -j$(grep -c ^processor /proc/cpuinfo) --variables-files=etc/scons/mongodbtoolchain_v3_gcc.vars
     multiversion_platform: rhel62
     multiversion_edition: enterprise
-    resmoke_jobs_base_factor: 0.5  # Avoid starting too many mongod's
+    resmoke_jobs_factor: 0.5  # Avoid starting too many mongod's
     # The gcov instrumentation saves the path the .gcno files were created in as the default path
     # for the .gcda files. In Evergreen the path will start with /data/mci/[Hashed ID]/src/... where
     # the hashed ID is unique per task run. GCOV_PREFIX_STRIP is the number of directory levels to
@@ -10802,7 +10802,7 @@ buildvariants:
   run_on:
   - ubi7
   expansions:
-    resmoke_jobs_base_factor: 1
+    resmoke_jobs_factor: 1
     disable_shared_scons_cache: true
     compile_flags: MONGO_DISTMOD=ubuntu1604 --opt=on -j$(grep -c ^processor /proc/cpuinfo) --variables-files=etc/scons/mongodbtoolchain_v3_gcc.vars
     tooltags: ""
@@ -11001,7 +11001,7 @@ buildvariants:
   run_on:
   - ubuntu1604-test
   expansions:
-    resmoke_jobs_base_factor: 0.5  # Avoid starting too many mongod's
+    resmoke_jobs_factor: 0.5  # Avoid starting too many mongod's
     compile_flags: MONGO_DISTMOD=ubuntu1604 --dbg=on --opt=on -j$(grep -c ^processor /proc/cpuinfo) --variables-files=etc/scons/mongodbtoolchain_v3_gcc.vars --link-model=dynamic
     scons_cache_scope: shared
     scons_cache_mode: all
@@ -11025,7 +11025,7 @@ buildvariants:
   run_on:
   - ubuntu1604-container-server
   expansions:
-    resmoke_jobs_base_factor: 1
+    resmoke_jobs_factor: 1
     disable_shared_scons_cache: true
     compile_flags: MONGO_DISTMOD=ubuntu1604 --opt=on -j$(grep -c ^processor /proc/cpuinfo) --variables-files=etc/scons/mongodbtoolchain_v3_gcc.vars
     tooltags: ""
@@ -11265,7 +11265,7 @@ buildvariants:
     additional_package_targets: archive-mongocryptd archive-mongocryptd-debug
     # We need to compensate for SMT8 setting the cpu count very high and lower the amount of parallelism down
     compile_flags: --ssl MONGO_DISTMOD=rhel71 -j$(echo "$(grep -c processor /proc/cpuinfo)/2" | bc) CCFLAGS="-mcpu=power8 -mtune=power8 -mcmodel=medium" --variables-files=etc/scons/mongodbtoolchain_v3_gcc.vars
-    resmoke_jobs_base_factor: 0.25
+    resmoke_jobs_factor: 0.25
     has_packages: true
     packager_script: packager_enterprise.py
     packager_arch: ppc64le
@@ -11315,7 +11315,7 @@ buildvariants:
     additional_package_targets: archive-mongocryptd archive-mongocryptd-debug
     # We need to compensate for SMT8 setting the cpu count very high and lower the amount of parallelism down
     compile_flags: --ssl MONGO_DISTMOD=rhel81 -j$(echo "$(grep -c processor /proc/cpuinfo)/2" | bc) CCFLAGS="-mcpu=power8 -mtune=power8 -mcmodel=medium" --variables-files=etc/scons/mongodbtoolchain_v3_gcc.vars
-    resmoke_jobs_base_factor: 0.25
+    resmoke_jobs_factor: 0.25
     has_packages: true
     packager_script: packager_enterprise.py
     packager_arch: ppc64le
@@ -12264,7 +12264,7 @@ buildvariants:
     additional_package_targets: archive-mongocryptd archive-mongocryptd-debug
     # We need to compensate for SMT8 setting the cpu count very high and lower the amount of parallelism down
     compile_flags: --dbg=on --opt=on --ssl MONGO_DISTMOD=rhel71 -j$(echo "$(grep -c processor /proc/cpuinfo)/2" | bc) CCFLAGS="-mcpu=power8 -mtune=power8 -mcmodel=medium" --variables-files=etc/scons/mongodbtoolchain_v3_gcc.vars
-    resmoke_jobs_base_factor: 0.25
+    resmoke_jobs_factor: 0.25
     test_flags: --storageEngine=inMemory --excludeWithAnyTags=requires_persistence,requires_journaling
   tasks:
   - name: compile_all_run_unittests_TG
@@ -12345,7 +12345,7 @@ buildvariants:
     compile_flags: --variables-files=etc/scons/mongodbtoolchain_v3_clang.vars --dbg=on --opt=on --allocator=system --sanitize=address --ssl --enable-free-mon=on -j$(grep -c ^processor /proc/cpuinfo)
     multiversion_platform: ubuntu1804
     multiversion_edition: enterprise
-    resmoke_jobs_base_factor: 0.3  # Avoid starting too many mongod's under ASAN build.
+    resmoke_jobs_factor: 0.3  # Avoid starting too many mongod's under ASAN build.
     hang_analyzer_dump_core: false
     scons_cache_scope: shared
     test_flags: --excludeWithAnyTags=requires_fast_memory
@@ -12410,7 +12410,7 @@ buildvariants:
     compile_flags: --variables-files=etc/scons/mongodbtoolchain_v3_clang.vars --opt=on --allocator=system --sanitize=address --ssl -j$(grep -c ^processor /proc/cpuinfo)
     multiversion_platform: ubuntu1804
     multiversion_edition: enterprise
-    resmoke_jobs_base_factor: 0.3  # Avoid starting too many mongod's under ASAN build.
+    resmoke_jobs_factor: 0.3  # Avoid starting too many mongod's under ASAN build.
     hang_analyzer_dump_core: false
     scons_cache_scope: shared
     test_flags: --excludeWithAnyTags=requires_fast_memory
@@ -12437,7 +12437,7 @@ buildvariants:
     compile_flags: --variables-files=etc/scons/mongodbtoolchain_v3_clang.vars --dbg=on --opt=on --sanitize=undefined --ssl --enable-free-mon=on -j$(grep -c ^processor /proc/cpuinfo)
     multiversion_platform: ubuntu1804
     multiversion_edition: enterprise
-    resmoke_jobs_base_factor: 0.3  # Avoid starting too many mongod's under UBSAN build.
+    resmoke_jobs_factor: 0.3  # Avoid starting too many mongod's under UBSAN build.
     scons_cache_scope: shared
   tasks:
   - name: compile_all_run_unittests_TG
@@ -12500,7 +12500,7 @@ buildvariants:
     # also made to SConstruct.
     san_options: UBSAN_OPTIONS="print_stacktrace=1:external_symbolizer_path=/opt/mongodbtoolchain/v3/bin/llvm-symbolizer" LSAN_OPTIONS="suppressions=etc/lsan.suppressions:report_objects=1" ASAN_OPTIONS="detect_leaks=1:check_initialization_order=true:strict_init_order=true:abort_on_error=1:disable_coredump=0:handle_abort=1:external_symbolizer_path=/opt/mongodbtoolchain/v3/bin/llvm-symbolizer"
     compile_flags: --variables-files=etc/scons/mongodbtoolchain_v3_clang.vars --dbg=on --opt=on --allocator=system --sanitize=undefined,address --ssl -j$(grep -c ^processor /proc/cpuinfo) --link-model=dynamic
-    resmoke_jobs_base_factor: 0.3  # Avoid starting too many mongod's under {A,UB}SAN build.
+    resmoke_jobs_factor: 0.3  # Avoid starting too many mongod's under {A,UB}SAN build.
     hang_analyzer_dump_core: false
     scons_cache_scope: shared
     scons_cache_mode: all
@@ -12528,7 +12528,7 @@ buildvariants:
     # also made to SConstruct.
     san_options: UBSAN_OPTIONS="print_stacktrace=1:external_symbolizer_path=/opt/mongodbtoolchain/v3/bin/llvm-symbolizer" LSAN_OPTIONS="suppressions=etc/lsan.suppressions:report_objects=1" ASAN_OPTIONS="detect_leaks=1:check_initialization_order=true:strict_init_order=true:abort_on_error=1:disable_coredump=0:handle_abort=1:external_symbolizer_path=/opt/mongodbtoolchain/v3/bin/llvm-symbolizer"
     compile_flags: LINKFLAGS=-nostdlib++ LIBS=stdc++ --variables-files=etc/scons/mongodbtoolchain_v3_clang.vars --dbg=on --opt=on --allocator=system --sanitize=undefined,address,fuzzer --ssl -j$(grep -c ^processor /proc/cpuinfo)
-    resmoke_jobs_base_factor: 0.3  # Avoid starting too many mongod's under {A,UB}SAN build.
+    resmoke_jobs_factor: 0.3  # Avoid starting too many mongod's under {A,UB}SAN build.
     hang_analyzer_dump_core: false
     scons_cache_scope: shared
   display_tasks:
@@ -12563,7 +12563,7 @@ buildvariants:
     test_flags: --storageEngine=ephemeralForTest --majorityReadConcern=off --excludeWithAnyTags=requires_persistence,requires_journaling,uses_transactions,requires_wiredtiger,requires_snapshot_read,requires_majority_read_concern
     compile_flags: --variables-files=etc/scons/mongodbtoolchain_v3_clang.vars --dbg=on --opt=on --allocator=system --sanitize=thread --ssl --enable-free-mon=on --use-libunwind=off -j$(grep -c ^processor /proc/cpuinfo)
     # Avoid starting too many mongod's under TSAN build.
-    resmoke_jobs_base_factor: 0.3
+    resmoke_jobs_factor: 0.3
     scons_cache_scope: shared
   tasks:
     - name: compile_all_run_unittests_TG

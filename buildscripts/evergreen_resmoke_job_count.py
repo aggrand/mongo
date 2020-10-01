@@ -121,8 +121,8 @@ def main():
     parser.add_argument("--buildVariant", dest="variant", required=True,
                         help="Build variant task is being executed on.")
     parser.add_argument(
-        "--jobBaseFactor", dest="jobs_factor", type=float, default=1.0,
-        help=("Base job factor to use as a mulitplier with the number of CPUs. Defaults"
+        "--jobFactor", dest="jobs_factor", type=float, default=1.0,
+        help=("Job factor to use as a mulitplier with the number of CPUs. Defaults"
               " to %(default)s."))
     parser.add_argument(
         "--jobsMax", dest="jobs_max", type=int, default=0,
