@@ -80,10 +80,12 @@ def get_task_factor(task_name, overrides, override_type, factor):
             return task_override["factor"]
     return factor
 
+
 def determine_final_multiplier(distro):
     """Determine the final multiplier."""
     multipliers = defaultdict(lambda: 1, DISTRO_MULTIPLIERS)
     return multipliers[distro]
+
 
 def determine_factor(task_name, variant, distro, factor):
     """Determine the job factor."""
@@ -94,6 +96,7 @@ def determine_factor(task_name, variant, distro, factor):
         global_task_factor(task_name, GLOBAL_TASK_FACTOR_OVERRIDES, factor),
     ]
     return min(factors) * determine_final_multiplier(distro)
+
 
 def determine_jobs(task_name, variant, distro, jobs_max=0, job_factor=1.0):
     """Determine the resmoke jobs."""
@@ -106,6 +109,7 @@ def determine_jobs(task_name, variant, distro, jobs_max=0, job_factor=1.0):
     if jobs_max == 0:
         return max(1, jobs_available)
     return min(jobs_max, jobs_available)
+
 
 def output_jobs(jobs, outfile):
     """Output jobs configuration to the specified location."""
@@ -148,7 +152,8 @@ def main():
     LOGGER.info("Finding job count", task=options.task, variant=options.variant,
                 platform=PLATFORM_MACHINE, sys=SYS_PLATFORM, cpu_count=CPU_COUNT)
 
-    jobs = determine_jobs(options.task, options.variant, options.distro, options.jobs_max, options.jobs_factor)
+    jobs = determine_jobs(options.task, options.variant, options.distro, options.jobs_max,
+                          options.jobs_factor)
     if jobs < CPU_COUNT:
         print("Reducing number of jobs to run from {} to {}".format(CPU_COUNT, jobs))
     output_jobs(jobs, options.outfile)

@@ -121,7 +121,7 @@ class DetermineJobsTest(unittest.TestCase):
             r"matching.*": target_factor,
         }
         variant = "a_build_variant"
-        distro = "a_distro", 
+        distro = "a_distro"
         job_count_matching = under_test.determine_jobs(task, variant, distro, jobs_max=jobs_default)
         self.assertEqual(jobs_default * target_factor, job_count_matching)
 
@@ -134,7 +134,7 @@ class DetermineJobsTest(unittest.TestCase):
             r"matching.*": target_factor,
         }
         variant = "a_build_variant"
-        distro = "a_distro", 
+        distro = "a_distro"
 
         job_count_matching = under_test.determine_jobs(task, variant, distro, jobs_max=jobs_default)
         self.assertEqual(jobs_default, job_count_matching)
